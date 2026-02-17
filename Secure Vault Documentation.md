@@ -22,4 +22,5 @@
   * *Lo qué no puede hacer:* Alterar el contenido del archivo y volver a empaquetarlo haciendo que parezca que tú hiciste esa modificación (no tiene acceso tu llave privada para generar una firma digital válida).
 * **Atacantes con acceso físico temporal:** Atacante que roba el equipo del usuario o accede de forma temporal mientras el usuario no está presente.
   * *Lo que puede hacer:* Acceder y copiar el archivo encrypted key store a una memoria o servicio de nube.
-  * *Lo que no puede hacer:* Acceder o extraer a las llaves privadas ni usarlas, puesto que se encontrarán protegidas.
+  * *Lo que no puede hacer:* Acceder o extraer a las llaves privadas ni usarlas, puesto que se encontrarán protegidas. 
+
