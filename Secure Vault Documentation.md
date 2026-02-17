@@ -1,5 +1,17 @@
-## Secure Document Vault
-### 1. Descripcion general del sistema
+# Secure Document Vault
+
+## Índice
+
+1. [Descripción General del Sistema](#1-descripcion-general-del-sistema)
+2. [Diagrama de Arquitectura](#2-diagrama-de-arquitectura)
+3. [Requerimientos de Seguridad](#3-requerimientos-de-seguridad)
+4. [Modelo de Amenaza](#4-modelo-de-amenaza)
+5. [Supuestos de Confianza](#5-supuestos-de-confianza)
+6. [Revisión de Superficie de Ataque](#6-revisión-de-superficie-de-ataque)
+7. [Restricciones de Diseño Derivadas de los Requisitos](#7-restricciones-de-diseño-derivadas-de-los-requisitos)
+
+
+## 1. Descripcion general del sistema
 La bóveda tiene como objetivo almacenar, compartir, acceder y proteger documentos en un canal inherentemente inseguro, bajo el supuesto de que:
 
 <div align="center">
@@ -92,7 +104,11 @@ El sistema no garantiza resistencia frente a:
 
 El diseño adopta un nivel de seguridad clásico de ≥128 bits. La migración a esquemas post-cuánticos requeriría primitivas adicionales no consideradas en este diseño base.
 
-### 3. Requerimientos de seguiridad
+## 2. Diagrama de arquitectura
+![Diagrama de Arquitectura - Cripto drawio (2)](https://github.com/user-attachments/assets/04e69cc7-1d32-47c6-93be-82037ca8ee54)
+
+
+## 3. Requerimientos de seguridad
 
 Los siguientes requisitos definen formalmente las propiedades que el sistema debe garantizar bajo el modelo de amenaza especificado.
 
@@ -193,7 +209,7 @@ Cualquier intento de modificar los metadatos o el encabezado del archivo debe se
 </div>
 
 
-### 4. Modelo de amenaza
+## 4. Modelo de amenaza
 
 #### Assets - What must be protected:
 * **Contenido del archivo:** Datos en texto plano del documento.
@@ -218,7 +234,7 @@ Cualquier intento de modificar los metadatos o el encabezado del archivo debe se
   * *Lo que no puede hacer:* Acceder o extraer a las llaves privadas ni usarlas, puesto que se encontrarán protegidas. 
 Perfecto — aquí tienes tu contenido reestructurado exactamente con ese formato:
 
-### 5. Supuestos de confianza
+## 5. Supuestos de confianza
 
 #### Assumptions - What must hold true:
 
@@ -274,7 +290,7 @@ Perfecto — aquí tienes tu contenido reestructurado exactamente con ese format
   * Se sigue la definición formal de esquemas SKES.
 
 
-### 6. Revisión de superficie de ataque
+## 6. Revisión de superficie de ataque
 
 #### Entry Points - Where attacks may occur:
 
@@ -320,3 +336,34 @@ Perfecto — aquí tienes tu contenido reestructurado exactamente con ese format
   * *What could go wrong:* Pasar la contraseña como argumento en la terminal y que quede almacenada en historial en texto plano.
   * *Security property at risk:* Confidencialidad de la contraseña maestra.
 
+## 7. Restricciones de diseño derivadas de los requisitos
+* Confidencialidad del Contenido
+   - Uso obligatorio de AEAD.
+   - Clave simétrica única por archivo.
+   - Nivel de seguridad mínimo: 128 bits.
+   - Uso exclusivo de CSPRNG para generación de claves y nonces.
+
+* Integridad
+   - Uso de AEAD (tag de autenticación).
+   - Rechazo inmediato ante fallo de verificación.
+
+* Autenticidad
+   - Firma digital obligatoria.
+   - Verificación antes del descifrado.
+   - Asociación explícita clave pública ↔ identidad.
+
+* No Repudio
+   - Uso de firmas digitales no reutilizables.
+   - Asociación persistente entre clave pública y usuario.
+   - Verificación determinística.
+
+* Confidencialidad de Claves Privadas
+   - Cifrar las llaves utilizando KDF resistente a fuerza bruta (Argon2 / PBKDF2).
+   - Parámetros que garanticen alto costo computacional.
+   - Nunca almacenar claves en texto plano.
+
+* Protección contra Reutilización de Nonce
+   - Nonce único por operación.
+   - Generación mediante CSPRNG.
+   - Prohibición de contadores manuales inseguros.
+   - Prohibición de contadores manuales inseguros.
