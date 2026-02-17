@@ -2,7 +2,11 @@
 ### 1. Descripcion general del sistema
 La bóveda tiene como objetivo almacenar, compartir, acceder y proteger documentos en un canal inherentemente inseguro, bajo el supuesto de que:
 
-<p align="center"><strong><em>“Any channel by default is always considered insecure”</em></strong></p>
+<div align="center">
+
+***“Any channel by default is always considered insecure”***
+
+</div>
 
 Protegiendo consigo aspectos muy importantes tales como:
 * Confidencialidad
@@ -88,6 +92,106 @@ El sistema no garantiza resistencia frente a:
 
 El diseño adopta un nivel de seguridad clásico de ≥128 bits. La migración a esquemas post-cuánticos requeriría primitivas adicionales no consideradas en este diseño base.
 
+### 3. Requerimientos de seguiridad
+
+Los siguientes requisitos definen formalmente las propiedades que el sistema debe garantizar bajo el modelo de amenaza especificado.
+
+#### Confidencialidad del Contenido
+
+**Definición**
+
+Un adversario computacionalmente acotado que obtenga acceso completo al contenedor cifrado no debe poder:
+
+* Recuperar el plaintext.
+* Distinguir información parcial del ciphertext.
+* Inferir contenido más allá de su longitud.
+
+Esto corresponde a seguridad semántica contra chosen-plaintext attack (CPA).
+
+**Declaración formal**
+
+<div align="center">
+
+***“Un atacante que obtenga el contenedor cifrado no debe poder acceder al contenido del archivo sin poseer la clave privada correcta asociada a un destinatario autorizado.”***
+
+</div>
+
+#### Integridad del Contenido
+
+**Definición**
+
+Cualquier modificación no autorizada del contenedor cifrado debe ser detectada antes de revelar el plaintext.
+
+**Declaración formal**
+
+<div align="center">
+
+***“Si un solo bit del contenedor cifrado es modificado, el proceso de verificación debe fallar y el archivo no debe ser descifrado.”***
+
+</div>
+
+#### Autenticidad del Remitente
+
+**Definición**
+
+El receptor debe poder verificar criptográficamente que el archivo fue creado por el remitente declarado.
+
+**Declaración formal**
+
+<div align="center">
+
+***“Un atacante no debe poder generar un contenedor válido que sea aceptado como proveniente de un remitente legítimo sin poseer su clave privada.”***
+
+</div>
+
+#### No Repudio
+
+**Definición**
+
+El remitente no debe poder negar posteriormente haber realizado alguna acción con documentos.
+
+#### Confidencialidad de Claves Privadas
+
+**Definición**
+
+Un atacante que obtenga acceso al almacenamiento local no debe poder extraer claves privadas sin conocer la contraseña correcta.
+
+**Declaración formal**
+
+<div align="center">
+
+***“Un atacante que obtenga el Key Store cifrado no debe poder recuperar una clave privada sin realizar un ataque de fuerza bruta computacionalmente inviable.”***
+
+</div>
+
+#### Protección contra Reutilización de Nonce
+
+**Definición**
+
+El sistema debe garantizar que nunca se reutiliza un nonce bajo la misma clave en AEAD.
+
+**Declaración formal**
+
+<div align="center">
+
+***“El sistema debe emplear un generador de números aleatorios criptográficamente seguro (CSPRNG) para asegurar que cada operación de cifrado AEAD utilice un nonce único y no predecible. Si el sistema detecta o agota el espacio de nonces para una clave específica, debe invalidar la sesión de cifrado y forzar la rotación de llaves.”***
+
+</div>
+
+#### Protección contra Manipulación
+
+**Definición**
+
+Cualquier intento de modificar los metadatos o el encabezado del archivo debe ser detectado mediante la verificación del tag de autenticación (AEAD) antes de cualquier operación lógica, invalidando el proceso de apertura.
+
+**Declaración formal**
+
+<div align="center">
+
+***“Toda la información no cifrada que sea crítica para el proceso (metadatos del archivo, identificadores de versión y algoritmos) debe ser vinculada criptográficamente al cifrado mediante el uso de Datos Asociados (AAD) dentro del esquema AEAD. Cualquier modificación de un solo bit en los metadatos o en el ciphertext resultará en un fallo de autenticación, provocando que la aplicación aborte el proceso de apertura sin realizar intentos de descifrado.”***
+
+</div>
+
 
 ### 4. Modelo de amenaza
 
@@ -113,8 +217,6 @@ El diseño adopta un nivel de seguridad clásico de ≥128 bits. La migración a
   * *Lo que puede hacer:* Acceder y copiar el archivo encrypted key store a una memoria o servicio de nube.
   * *Lo que no puede hacer:* Acceder o extraer a las llaves privadas ni usarlas, puesto que se encontrarán protegidas. 
 Perfecto — aquí tienes tu contenido reestructurado exactamente con ese formato:
-
----
 
 ### 5. Supuestos de confianza
 
@@ -171,7 +273,6 @@ Perfecto — aquí tienes tu contenido reestructurado exactamente con ese format
   * No existe mezcla de dominios de claves.
   * Se sigue la definición formal de esquemas SKES.
 
----
 
 ### 6. Revisión de superficie de ataque
 
