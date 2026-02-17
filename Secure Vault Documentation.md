@@ -1,3 +1,92 @@
+## Secure Document Vault
+### 1. Descripcion general del sistema
+La bóveda tiene como objetivo almacenar, compartir, acceder y proteger documentos en un canal inherentemente inseguro, bajo el supuesto de que:
+
+<p align="center"><strong><em>“Any channel by default is always considered insecure”</em></strong></p>
+
+Protegiendo consigo aspectos muy importantes tales como:
+* Confidencialidad
+* Integridad
+* Autenticidad
+* No repudio
+
+#### Caracteristicas principales:
+Características principales
+* Generación de llaves simétricas para cada archivo.
+* Cifrado de archivos mediante **AEAD (Authenticated Encryption with Associated Data)**, por ejemplo AES-GCM o ChaCha20-Poly1305.
+* Cifrado híbrido (key wrapping con RSA/ECC) para proteger las claves simétricas de cada archivo mediante las llaves públicas de los destinatarios.
+* Firma digital obligatoria de los documentos para garantizar la autenticidad.
+* Verificación de la firma antes de descifrar el contenido.
+* Gestión de claves con KDF (Argon2 / PBKDF2).
+* Respaldo de las llaves.
+* Mecanismo de recuperación de las llaves.
+* Capacidad para compartir con múltiples usuarios.
+* Formato: CLI o aplicación local.
+
+#### Alcance de nuestra boveda
+El diseño de la Secure Digital Document Vault se fundamenta en un modelo de amenaza explícito y limitado. Conforme al principio de diseño conservador, se asume un adversario fuerte en el canal y almacenamiento, pero no un compromiso total del entorno de ejecución.
+Por ende los siguientes escenarios quedan fuera de nuestros alcances:
+
+#### Compromiso Total del Sistema Operativo
+
+El sistema no protege contra escenarios donde:
+
+* El dispositivo del usuario está infectado con malware.
+* Existe un keylogger activo.
+* Un atacante tiene acceso directo al dispositivo y posee privilegios root/administrador.
+* Se ejecutan ataques de canal lateral (timing, power analysis, EM leakage).
+
+**Justificación:**
+
+La criptografía protege datos en tránsito y en almacenamiento no confiable, pero no puede proteger contra un entorno completamente comprometido. Si un atacante puede acceder a la memoria del proceso mientras la clave privada está desbloqueada, ningún esquema criptográfico puede impedir la extracción del secreto.
+
+#### Ingeniería Social y Compromiso Humano
+
+El sistema no cubre:
+
+* Phishing para obtener contraseñas.
+* Ingeniería social para obtener claves privadas.
+* Coerción física o legal.
+* Uso de contraseñas débiles por parte del usuario.
+
+**Justificación:**
+
+El modelo de amenaza protege activos técnicos, pero no puede prevenir fallos humanos deliberados o manipulaciones psicológicas. Esto se alinea con el modelo sistémico donde las personas son un borde vulnerable del sistema.
+
+#### Recuperación de Contraseña sin Material de Respaldo
+
+El sistema no incluye:
+
+* Mecanismos de recuperación centralizada.
+* Backdoors criptográficos.
+* Recuperación por terceros.
+
+**Justificación:**
+
+Bajo el principio de Kerckhoffs, la seguridad depende únicamente de las claves. Permitir recuperación sin material de respaldo introduciría debilidades estructurales. Si el usuario pierde su contraseña y no dispone de backup seguro, la información se considera irrecuperable.
+
+#### Infraestructura PKI Completa
+
+El sistema no implementa:
+
+* Autoridades Certificadoras (CA).
+* Revocación automática (CRL/OCSP).
+* Infraestructura empresarial de confianza.
+* Gestión de identidades distribuida.
+
+**Justificación:**
+
+El diseño asume que las claves públicas se obtienen por un canal confiable externo. El establecimiento de una PKI completa pertenece a una arquitectura organizacional más amplia y excede el alcance de una bóveda criptográfica local.
+
+#### Seguridad Post-Cuántica
+
+El sistema no garantiza resistencia frente a:
+
+* Adversarios con computación cuántica a gran escala.
+
+**Justificación:**
+
+El diseño adopta un nivel de seguridad clásico de ≥128 bits. La migración a esquemas post-cuánticos requeriría primitivas adicionales no consideradas en este diseño base.
 
 
 ### 4. Modelo de amenaza
