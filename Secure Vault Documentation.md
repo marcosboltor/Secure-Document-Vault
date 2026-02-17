@@ -23,4 +23,110 @@
 * **Atacantes con acceso físico temporal:** Atacante que roba el equipo del usuario o accede de forma temporal mientras el usuario no está presente.
   * *Lo que puede hacer:* Acceder y copiar el archivo encrypted key store a una memoria o servicio de nube.
   * *Lo que no puede hacer:* Acceder o extraer a las llaves privadas ni usarlas, puesto que se encontrarán protegidas. 
+Perfecto — aquí tienes tu contenido reestructurado exactamente con ese formato:
+
+---
+
+### 5. Supuestos de confianza
+
+#### Assumptions - What must hold true:
+
+* **Confianza en los algoritmos (Principio de Kerckhoffs):**
+
+  * Los algoritmos son públicos y auditables.
+  * La seguridad depende únicamente del secreto de las claves.
+  * No se asume *security by obscurity*.
+
+* **Adversario computacionalmente acotado:**
+
+  * El atacante puede acceder al ciphertext, modificar almacenamiento y ejecutar ataques CPA.
+  * Tiene poder computacional polinomial.
+  * No puede ejecutar ataques con complejidad ≥ 2¹²⁸ ni romper primitivas criptográficas modernas correctamente implementadas.
+
+* **Entorno de ejecución parcialmente confiable:**
+
+  * El sistema operativo no está completamente comprometido.
+  * No existen keyloggers activos.
+  * No hay extracción directa de memoria protegida.
+  * Si el endpoint está comprometido totalmente, la seguridad criptográfica deja de ser aplicable.
+
+* **Fuente de aleatoriedad segura:**
+
+  * Existencia de un CSPRNG seguro.
+  * Entropía suficiente.
+  * No reutilización de nonces.
+  * La unicidad del nonce es crítica para AES-GCM.
+
+* **Comportamiento responsable del usuario:**
+
+  * El usuario elige una contraseña razonablemente fuerte.
+  * No la comparte.
+  * No la reutiliza trivialmente.
+  * El sistema mitiga fuerza bruta mediante KDF, pero no puede compensar contraseñas extremadamente débiles.
+
+* **Autenticidad externa de claves públicas:**
+
+  * Las claves públicas fueron obtenidas mediante un canal confiable.
+  * No fueron sustituidas por un atacante.
+  * No se implementa PKI completa ni verificación automática de revocación.
+
+* **Almacenamiento hostil:**
+
+  * El almacenamiento puede ser observado, modificado o reemplazado.
+  * El diseño criptográfico debe resistir este entorno no confiable.
+
+* **Separación estricta entre claves y datos:**
+
+  * Las claves privadas están cifradas en reposo.
+  * No se reutilizan claves de sesión.
+  * No existe mezcla de dominios de claves.
+  * Se sigue la definición formal de esquemas SKES.
+
+---
+
+### 6. Revisión de superficie de ataque
+
+#### Entry Points - Where attacks may occur:
+
+
+* **File Input:**
+
+  * *What could go wrong:* Procesamiento de archivos extremadamente grandes para agotar memoria o uso de rutas no autorizadas del sistema.
+  * *Security property at risk:* Disponibilidad y confidencialidad local.
+
+
+* **Metadata Parsing:**
+
+  * *What could go wrong:* Modificación del campo de algoritmo de cifrado para forzar un downgrade si los metadatos no están autenticados bajo AEAD.
+  * *Security property at risk:* Integridad y confidencialidad.
+
+
+* **Key Import / Export:**
+
+  * *What could go wrong:* Sustitución de llave pública durante importación o exportación insegura de llave privada.
+  * *Security property at risk:* Confidencialidad (filtración de llave privada) y autenticidad (confianza en llave falsa).
+
+
+* **Password Entry (Contraseña maestra):**
+
+  * *What could go wrong:* Uso de contraseñas de baja entropía o configuración insuficiente del costo del KDF.
+  * *Security property at risk:* Confidencialidad de las llaves privadas.
+
+
+* **Sharing Workflow:**
+
+  * *What could go wrong:* Error lógico en Key Wrapping, cifrado con llave equivocada o exposición accidental en estructura JSON.
+  * *Security property at risk:* Confidencialidad de la llave de sesión en tránsito.
+
+
+* **Signature Verification:**
+
+  * *What could go wrong:* Descifrar antes de verificar la firma digital.
+  * *Security property at risk:* Autenticidad de origen e integridad.
+
+
+* **CLI Arguments:**
+
+  * *What could go wrong:* Pasar la contraseña como argumento en la terminal y que quede almacenada en historial en texto plano.
+  * *Security property at risk:* Confidencialidad de la contraseña maestra.
 
