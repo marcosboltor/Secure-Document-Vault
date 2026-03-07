@@ -1,4 +1,4 @@
-import json, struct, time, os
+import json, struct, time, os, secrets
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from cryptography.exceptions import InvalidTag
 
@@ -43,6 +43,32 @@ class AEAD_Engine:
             message = "SECURITY ALERT: The file or metadata has been modified or the key is incorrect"
             print(f">>>> ERROR: {message} >>>>")
             raise IntegrityErrorException(message)
+
+#Dev 2 Daniel
+class RandomnessManager:
+    
+    @staticmethod
+    def generate_key(length: int = 32) -> bytes:
+        """
+        Genera una llave simétrica fresca de la longitud especificada (por defecto 256 bits = 32 bytes).
+        Utiliza secrets.token_bytes el cual está ligado al CSPRNG interno del SO.
+        
+        :param length: Longitud de la llave en bytes.
+        :return: Bytes aleatorios criptográficamente seguros para la llave.
+        """
+        return secrets.token_bytes(length)
+        
+    @staticmethod
+    def generate_nonce(length: int = 12) -> bytes:
+        """
+        Genera un nonce aleatorio criptográficamente seguro.
+        El valor por defecto es de 12 bytes, que es el estándar para los algoritmos ChaCha20-Poly1305 y AES-GCM.
+        Utiliza secrets.token_bytes para garantizar imprevisibilidad y evitar repeticiones.
+        
+        :param length: Longitud del nonce en bytes.
+        :return: Bytes aleatorios criptográficamente seguros para el nonce.
+        """
+        return secrets.token_bytes(length)
 
 #Dev 3 Marcos
 class VaultBuilder:
@@ -90,30 +116,65 @@ class VaultBuilder:
 
         return nonce, aad_metadatos, ciphertext_con_tag
 
-def main():
-    llave_secreta = os.urandom(32) # Llave de 256 bits para ChaCha20
-    mensaje_original = b"Este es un secreto super importante de la empresa."
-    nombre_archivo = "secreto.txt"
+#Dev 2 FUNCION UNICA CON INTEGRACION COMPLETA:
+
+def encriptar(key: bytes, archivo_en_bytes: bytes, nombre_archivo: str) -> bytes:
+    """
+    Cifra un archivo en bytes y lo empaqueta en formato .vault.
     
-    dev1_engine = AEAD_Engine(llave_secreta)
+    :param key: Llave simétrica de 256 bits (32 bytes).
+    :param archivo_en_bytes: Archivo original en bytes.
+    :param nombre_archivo: Nombre del archivo original.
+    :return: Archivo completo en formato .vault como bytes.
+    """
+    dev1_engine = AEAD_Engine(key)
+    dev2_randomness = RandomnessManager()
     dev3_builder = VaultBuilder()
 
-    print("=== FASE 1: CIFRADO Y EMPAQUETADO ===")
+    # Recolectamos metadatos (usando un nombre genérico para compatibilidad)
     aad_bytes = dev3_builder.recolectar_metadatos(nombre_archivo)
-    nonce_generado = os.urandom(12)
-    ciphertext = dev1_engine.encrypt(nonce_generado, mensaje_original, aad_bytes)
+    
+    # Generamos un nonce fresco para cada cifrado
+    nonce_generado = dev2_randomness.generate_nonce()
+    
+    # Ciframos los datos
+    ciphertext = dev1_engine.encrypt(nonce_generado, archivo_en_bytes, aad_bytes)
+    
+    # Empaquetamos todo en el formato final
     archivo_vault = dev3_builder.empaquetar(nonce_generado, aad_bytes, ciphertext)
-    print(f"[+] Archivo .vault empaquetado. Tamaño total: {len(archivo_vault)} bytes.\n")
     
-    print("=== FASE 2: DESEMPAQUETADO Y DESCIFRADO ===")    
-    nonce_leido, aad_leido, ciphertext_leido = dev3_builder.desempaquetar(archivo_vault)
-    print(f"[*] Metadatos recuperados: {aad_leido.decode('utf-8')}")
-    
-    try:
-        mensaje_recuperado = dev1_engine.decrypt(nonce_leido, ciphertext_leido, aad_leido)
-        print(f"[+] ¡Éxito! Mensaje recuperado: {mensaje_recuperado.decode('utf-8')}")
-    except IntegrityErrorException as e:
-        print(f"[-] Falló el descifrado: {e}")
+    return archivo_vault
 
+
+def desencriptar(key: bytes, archivo_vault: bytes) -> bytes:
+    """
+    Desempaqueta y descifra un archivo .vault devolviendo sus bytes originales.
+    
+    :param key: Llave simétrica de 256 bits (32 bytes) original.
+    :param archivo_vault: Archivo en formato .vault en bytes.
+    :return: Archivo original en bytes (texto plano).
+    """
+    dev1_engine = AEAD_Engine(key)
+    dev3_builder = VaultBuilder()
+    
+    # Desempaquetamos los componentes
+    nonce_leido, aad_leido, ciphertext_leido = dev3_builder.desempaquetar(archivo_vault)
+    
+    # Desciframos y validamos la integridad
+    mensaje_recuperado = dev1_engine.decrypt(nonce_leido, ciphertext_leido, aad_leido)
+    
+    return mensaje_recuperado
+
+def main():
+    llave = RandomnessManager.generate_key()
+    nombre_archivo = "secreto.txt"
+    archivo_original = b"Este es un secreto super importante de la empresa."
+    archivo_cifrado = encriptar(llave, archivo_original, nombre_archivo)
+    archivo_descifrado = desencriptar(llave, archivo_cifrado)
+    
+    print(f"Archivo original: {archivo_original}")
+    print(f"Archivo cifrado: {archivo_cifrado}")
+    print(f"Archivo descifrado: {archivo_descifrado}")
+    
 if __name__ == "__main__":
     main()
