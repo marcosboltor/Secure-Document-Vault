@@ -8,20 +8,20 @@ class IntegrityErrorException(Exception):
 
 class AEAD_Engine:
     def __init__(self, key: bytes):
-        '''Initializes the cryptographic motor.
+        '''Inicializa el motor criptográfico.
 
-        :param key: The 256 bit simetric key generated
+        :param key: La llave simetrica de 256 bits generada.
         '''
         self.chacha20 = ChaCha20Poly1305(key)
 
     def encrypt(self, nonce: bytes, plaintext: bytes, aad: bytes) -> bytes:
         '''
-        Encrypts the data and links it with the metadata
+        Encripta los datos y los vincula con los metadatos
 
-        :param nonce: A single-use value in bytes. 
-        :param plaintext: The content of the original file in bytes. 
-        :param aad: The associated metadata in bytes. 
-        :return: The ciphertext in bytes (as it includes the authentication label).
+        :param nonce: Un valor de uso único en bytes. 
+        :param plaintext: El contenido del archivo original en bytes. 
+        :param aad: Los metadatos asociados en bytes. 
+        :return: El texto cifrado en bytes (ya que incluye la etiqueta de autenticación).
         '''
         ciphertext = self.chacha20.encrypt(nonce, plaintext, aad)
         return ciphertext
@@ -29,18 +29,18 @@ class AEAD_Engine:
 
     def decrypt(self, nonce: bytes, ciphertext: bytes, aad: bytes) -> bytes:
         """
-        Decrypts the data and verifies its integrity/authenticity.
+        Descifra los datos y verifica su integridad/authenticidad.
         
-        :param nonce: The same nonce used for encrypting.
-        :param ciphertext: Ciphertext in bytes.
-        :param aad: The same metadata used for encrypting. 
-        :return: The original text plain in bytes.
+        :param nonce: El mismo nonce usado para cifrar.
+        :param ciphertext: El texto cifrado en bytes.
+        :param aad: Los mismos metadatos usados para cifrar. 
+        :return: El texto original en bytes.
         """
         try:
             plaintext = self.chacha20.decrypt(nonce, ciphertext, aad)
             return plaintext
         except InvalidTag:
-            message = "SECURITY ALERT: The file or metadata has been modified or the key is incorrect"
+            message = "ALERTA DE SEGURIDAD: El archivo o los metadatos han sido modificados o la llave es incorrecta"
             print(f">>>> ERROR: {message} >>>>")
             raise IntegrityErrorException(message)
 
