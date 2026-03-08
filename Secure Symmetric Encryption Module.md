@@ -111,3 +111,23 @@ En caso de que esta verificación no sea válida:
 Esto evita que se procese **información alterada o potencialmente maliciosa**.
 
 Este mecanismo garantiza que **cualquier modificación en el contenido cifrado o en los metadatos sea detectada de manera segura**.
+
+---
+
+# Especificaciones técnicas para el diseño del cifrado
+
+## Selected AEAD algorithm:
+
+Para el motor criptográfico de la bóveda digital, se decidió emplear ChaCha20-Poly1305 como algoritmo de Cifrado Autenticado con Datos Asociados. 
+La razón por la cual se escogió este algoritmo, es debido a cuestiones de rendimiento, pues aunque AES - GCM ofrece el mismo nivel de seguridad, necesita de soporte de hardware específico para funcionar de forma eficiente, mientras que ChaCha20 ofrece un rendimiento eficiente sólo mediante el uso de software. Asimismo, una de las razones por las cuales se eligió ChaCha20 - Poly1305, es debido a que es más resistente a ataques de timing (ataques que miden el tiempo que toma un sistema en procesar diferentes entradas y usan análisis estadísticos para correlacionar esta información de tiempos con posibles valores de la llave de descifrado), gracias a que sus operaciones son simples y se ejecutan en un tiempo constante, lo que reduce el riesgo de ataque. 
+
+## Key size
+El tamaño de llave implementado es de 256 bits. Esto debido a que es un estándar establecido por el RFC 8439 para  tener márgenes de seguridad, además este tamaño de llave, hace que los ataques de fuerza bruta sean mucho más difíciles para los atacantes con la tecnología y recursos actuales. También, otro punto a considerar, es que a pesar de que la computación cuántica representa una amenaza futura a los algoritmos presentes, tal como el algoritmo de Grover, el cual reduce la mitad de la fuerza efectiva de una llave simétrica, aún quedan 128 bits de seguridad para mantener la información segura. 
+
+## Nonce strategy
+
+La integridad y confidencialidad del esquema ChaCha20-Poly1305 dependen críticamente de la unicidad del nonce (Number Used Once). En cifradores de flujo, la reutilización de un nonce con la misma llave secreta resulta en una vulnerabilidad catastrófica conocida como two-time pad. Dicho ataque permite a un adversario aplicar una operación XOR entre dos textos cifrados resultantes para cancelar el flujo de claves (keystream), exponiendo el XOR de los textos planos subyacentes sin necesidad de comprometer la llave de 256 bits.
+
+Para mitigar este riesgo estructural, la bóveda digital implementa una estrategia de generación de nonce basada estrictamente en aleatoriedad criptográfica, descartando el uso de contadores secuenciales o esquemas predecibles propensos a colisiones por reinicios del sistema, errores de estado o concurrencia multihilo. Específicamente, se ha configurado la generación de un nonce fresco de 96 bits (12 bytes), el estándar requerido por el RFC 843,  por cada proceso de cifrado, utilizando el Generador de Números Pseudoaleatorios Criptográficamente Seguro (CSPRNG) provisto nativamente por el hardware y sistema operativo subyacente.
+
+Mediante el uso de fuentes de entropía extraídas de fenómenos de sistema imprevisibles e inherentes al equipo (a través del módulo secrets de Python), se asegura matemáticamente una distribución uniforme. Dada la longitud de 96 bits, el espacio posible de números es de $2^{96}$, lo que garantiza que la probabilidad de una colisión accidental o repetitiva (incluso bajo un volumen de cifrado masivo o en entornos paralelos) sea infinitesimalmente descartable, consolidando así la solidez teórica del algoritmo AEAD.
