@@ -134,3 +134,37 @@ Mediante el uso de fuentes de entropía extraídas de fenómenos de sistema impr
 
 ## Metadata authentication strategy
 La estrategia de autenticación de metadatos se fundamenta en el uso de Datos Autenticados Adicionales (AAD) integrados de forma nativa en el esquema AEAD ChaCha20-Poly1305, donde información de contexto crítica como el nombre del archivo, el identificador de propietario único (owner), la versión del algoritmo y una marca de tiempo (timestamp) se serializa en formato JSON y se vincula criptográficamente al texto cifrado mediante el cálculo de la etiqueta de autenticación (MAC). Aunque estos metadatos residen en texto plano dentro del contenedor para permitir su lectura durante el parseo, esta arquitectura está diseñada específicamente para defender el sistema contra adversarios activos (Man-in-the-Middle) que intenten manipular el contexto del archivo; por ejemplo, si un atacante modifica el campo de propietario para evadir la restricción de dueño único, altera la versión para forzar un ataque de degradación (downgrade attack), o intenta un ataque de reemplazo (replay attack) modificando la línea temporal, la validación de la etiqueta de autenticación fallará irremediablemente, abortando el descifrado bajo el principio de fail-safely para garantizar la integridad absoluta de la bóveda.
+
+---
+
+# Security Decisions
+
+## Why AEAD instead of encryption + hash?
+AEAD (Cifrado Autenticado con Datos Asociados) combina 2 algoritmos: el cifrado y MAC (Message Authentication Code) en una sola función o primitiva, lo cual reduce significativamente las vulnerabilidades de implementación al momento de implementar por separado ambas técnicas, por ejemplo, no autenticar todos los datos necesarios. La ventaja es que un algoritmo de AEAD como ChaCha20 - Poly1305 resuelve estos inconvenientes ofreciendo una solución completa, al cifrar los datos en texto plano y generando una etiqueta de autenticación con una sola llave.
+
+Asimismo, AEAD proporciona autenticidad de los datos, permite el uso de datos adicionales que se envían junto con los datos cifrados, de tal forma que los datos adicionales en texto plano y los datos cifrados se autentican juntos, si alguno de estos se altera, se producirá una etiqueta inválida. 
+
+## What happens if nonce repeats?
+Es fundamental garantizar que un nonce nunca se reutilice con la misma llave, ya que la reutilización puede romper las garantías de seguridad del sistema de manera irreversible. En algoritmos modernos de cifrado autenticado, reutilizar un nonce puede permitir revelar relaciones entre mensajes cifrados e incluso facilitar la falsificación de datos aparentemente válidos.
+
+Esto está básicamente dado por características matemáticas inherentes a las propiedades básicas del operador lógico XOR. Es decir, si el nonce se repite bajo una misma llave simétrica, el algoritmo generará de forma determinística exactamente el mismo flujo interminable de bits pseudoaleatorios (conocido como keystream). Si se cifran dos documentos distintos utilizando este mismo par repetido de llave y nonce, ambos textos resultantes habrán sido cifrados operando XOR contra un keystream idéntico. Debido a que el operador XOR es conmutativo e involutivo (cualquier valor operado contra sí mismo se anulará mutuamente), un atacante no necesita en absoluto calcular la llave secreta para quebrar el canal.
+Le basta con interceptar ambos archivos cifrados y aplicarles una simple operación XOR entre sí. Por simple principio matemático, esto causará que el keystream duplicado que protegía los archivos colapse y desaparezca por completo de la ecuación. El resultado restante de esta operación expone directamente el XOR entre los textos planos de los dos mensajes originales, despojados de cualquier entropía criptográfica. A partir de este punto, el atacante puede usar criptoanálisis estadístico básico o inferencias del lenguaje natural para separar ambos textos y leerlos con claridad. Bajo esquemas AEAD que proporcionan sellos de autenticidad, una colisión de nonces vulnera más que la confidencialidad. La reutilización subordina la clave del autenticador de un solo uso, proporcionando a un atacante los patrones matemáticos suficientes para falsificar mensajes (forgeries), inyectándolos en el sistema y haciéndolos validar falsamente como si fueran datos legítimos inalterados.
+
+## What attacker are you defending against?
+Debido a que aún no se cuenta con una infraestructura completamente definida para el proyecto, se utiliza el marco de trabajo STRIDE para identificar los posibles tipos de ataques contra el sistema. Bajo este enfoque, se considera que el sistema debe proteger la información frente a los siguientes escenarios:
+
+Individuos o sistemas que intenten modificar el contenido del archivo cifrado, ya sea durante su transmisión a través de la red o mientras se encuentra almacenado. El objetivo de este atacante es alterar la información sin que el receptor detecte dicha modificación.
+Individuos o sistemas que puedan interceptar la información transmitida o acceder al archivo cifrado con el objetivo de obtener su contenido. Este tipo de atacante intenta comprometer la confidencialidad de la información.
+
+NOTA: Se asume un atacante capaz de interceptar comunicaciones o acceder a archivos almacenados, pero sin acceso directo a las claves criptográficas del sistema.
+
+---
+# Referencias bibliográficas:
+* Barker, E. (2020). Recommendation for key management: Part 1 - general. NIST Special Publication 800-57 Part 1 Revision 5. https://doi.org/10.6028/nist.sp.800-57pt1r5
+* Exploring Authenticated Encryption with Associated Data. (2022). n/a. Analog.com. https://ez.analog.com/ez-blogs/b/engineerzone-spotlight/posts/authenticated-encryption
+* Gemini. (2026). Asesoría técnica en redacción y formato .md. Google AI. https://gemini.google.com/
+* Jayasinghe, R. (2024). What is AEAD (Authenticated Encryption with Associated Data)? Medium. https://medium.com/@rushikajayasinghe/what-is-aead-authenticated-encryption-with-associated-data-17a5b2f42404
+* Nir, Y., & Langley, A. (2018). RFC 8439: ChaCha20 and Poly1305 for IETF Protocols. IETF Datatracker. https://datatracker.ietf.org/doc/html/rfc8439
+* OWASP Foundation. (s.f.). Threat modeling process. OWASP. https://owasp.org/www-community/Threat_Modeling_Process⁠
+* Pelegrin, J. (2025). ChaCha20: What it is, how it works, and why it matters. ExpressVPN. https://www.expressvpn.com/blog/chacha20/ 
+* What is a Timing Attack? How It Works & Examples | Twingate. (2024). Twingate.com. https://www.twingate.com/blog/glossary/timing%20attack
