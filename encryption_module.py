@@ -76,10 +76,11 @@ class VaultBuilder:
         # Header de 8 bytes para validar que es nuestro archivo
         self.magic_header = b'VAULT10\x00'
 
-    def recolectar_metadatos(self, nombre_archivo, algoritmo="ChaCha20-Poly1305", parametros_extra=None):
+    def recolectar_metadatos(self, nombre_archivo, owner_id="user_local", algoritmo="ChaCha20-Poly1305", parametros_extra=None):
         """Recolecta y serializa los metadatos a bytes (AAD)."""
         metadatos = {
             "file_name": nombre_archivo,
+            "owner": owner_id,
             "version": "1.0.0",
             "algorithm": algoritmo,
             "timestamp": int(time.time()),
