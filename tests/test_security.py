@@ -4,7 +4,7 @@ import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from encryption_module import (
+from encryption_module import (  # noqa: E402
     RandomnessManager,
     encriptar,
     desencriptar,
@@ -37,7 +37,7 @@ def test_ciphertext_tampering():
     vault = encriptar(key, plaintext, nombre_archivo)
 
     corrupted = bytearray(vault)
-    corrupted[-5] ^= 1   # modificamos un byte del ciphertext
+    corrupted[-5] ^= 1  # modificamos un byte del ciphertext
 
     with pytest.raises(IntegrityErrorException):
         desencriptar(key, bytes(corrupted))
