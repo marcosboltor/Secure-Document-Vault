@@ -328,16 +328,22 @@ name = "secure-document-vault"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "black" },
     { name = "cryptography" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "black" },
     { name = "flake8" },
     { name = "pytest" },
 ]
 
 [package.metadata]
-requires-dist = [
+requires-dist = [{ name = "cryptography", specifier = ">=46.0.5" }]
+
+[package.metadata.requires-dev]
+dev = [
     { name = "black", specifier = ">=26.3.1" },
-    { name = "cryptography", specifier = ">=46.0.5" },
     { name = "flake8", specifier = ">=7.3.0" },
     { name = "pytest", specifier = ">=9.0.2" },
 ]
