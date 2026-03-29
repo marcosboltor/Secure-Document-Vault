@@ -4,7 +4,7 @@ import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from secure_document_vault.encryption_module import (  # noqa: E402
+from project.src.secure_document_vault.encryption_module import (  # noqa: E402
     RandomnessManager,
     encriptar,
     desencriptar,
