@@ -1,0 +1,28 @@
+name: CI - Lint & Tests
+
+on:
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Lint (flake8)
+        run: uv run flake8 .
+
+      - name: Run tests
+        run: uv run pytest
