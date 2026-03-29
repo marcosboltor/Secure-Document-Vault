@@ -16,10 +16,10 @@ jobs:
         run: pip install uv
 
       - name: Set up Python
-        run: uv python install 3.10
+        run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --all-groups
 
       - name: Lint (flake8)
         run: uv run flake8 .
