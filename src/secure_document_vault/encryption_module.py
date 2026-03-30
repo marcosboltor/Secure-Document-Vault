@@ -5,6 +5,7 @@ import time
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from cryptography.exceptions import InvalidTag
 
+from .key_wrapping_module import ECCKeyWrapper
 
 # Dev 1 Sebastian
 class IntegrityErrorException(Exception):
@@ -91,14 +92,14 @@ class VaultBuilder:
     def recolectar_metadatos(
         self,
         nombre_archivo,
-        owner_id="user_local",
+        recipients=None,
         algoritmo="ChaCha20-Poly1305",
         parametros_extra=None,
     ):
         """Recolecta y serializa los metadatos a bytes (AAD)."""
         metadatos = {
             "file_name": nombre_archivo,
-            "owner": owner_id,
+            "recipients": recipients or [],
             "version": "1.0.0",
             "algorithm": algoritmo,
             "timestamp": int(time.time()),
@@ -143,64 +144,110 @@ class VaultBuilder:
 # Dev 2 FUNCION UNICA CON INTEGRACION COMPLETA:
 
 
-def encriptar(key: bytes, archivo_en_bytes: bytes, nombre_archivo: str) -> bytes:
+def encriptar(archivo_en_bytes: bytes, nombre_archivo: str, recipients_info: list) -> bytes:
     """
     Cifra un archivo en bytes y lo empaqueta en formato .vault.
 
-    :param key: Llave simétrica de 256 bits (32 bytes).
     :param archivo_en_bytes: Archivo original en bytes.
     :param nombre_archivo: Nombre del archivo original.
+    :param recipients_info: Lista de diccionarios [{"id": <str>, "public_key": <X25519PublicKey>}, ...]
     :return: Archivo completo en formato .vault como bytes.
     """
-    dev1_engine = AEAD_Engine(key)
     dev2_randomness = RandomnessManager()
     dev3_builder = VaultBuilder()
 
-    # Recolectamos metadatos (usando un nombre genérico para compatibilidad)
-    aad_bytes = dev3_builder.recolectar_metadatos(nombre_archivo)
+    # 1. Generate a symmetric file key
+    file_key = dev2_randomness.generate_key()
 
-    # Generamos un nonce fresco para cada cifrado
+    # 2. Encrypt the file key using each recipient's public key
+    recipients_metadata = []
+    for recipient in recipients_info:
+        wrapped_data = ECCKeyWrapper.wrap_key(file_key, recipient["public_key"])
+        recipients_metadata.append({
+            "id": recipient["id"],
+            "encrypted_key": wrapped_data
+        })
+
+    # Recolectamos metadatos ligando a los recipients para AAD
+    aad_bytes = dev3_builder.recolectar_metadatos(nombre_archivo, recipients=recipients_metadata)
+
+    # Inicializamos el motor ChaCha20 y generamos nonce
+    dev1_engine = AEAD_Engine(file_key)
     nonce_generado = dev2_randomness.generate_nonce()
 
-    # Ciframos los datos
+    # Ciframos el archivo usando el Symmetric Key
     ciphertext = dev1_engine.encrypt(nonce_generado, archivo_en_bytes, aad_bytes)
 
-    # Empaquetamos todo en el formato final
+    # Empaquetamos en .vault
     archivo_vault = dev3_builder.empaquetar(nonce_generado, aad_bytes, ciphertext)
 
     return archivo_vault
 
 
-def desencriptar(key: bytes, archivo_vault: bytes) -> bytes:
+def desencriptar(archivo_vault: bytes, user_id: str, private_key) -> bytes:
     """
-    Desempaqueta y descifra un archivo .vault devolviendo sus bytes originales.
+    Desempaqueta y descifra un archivo .vault.
 
-    :param key: Llave simétrica de 256 bits (32 bytes) original.
     :param archivo_vault: Archivo en formato .vault en bytes.
+    :param user_id: Identificador del usuario que intenta descifrar.
+    :param private_key: Llave privada (X25519PrivateKey) del usuario.
     :return: Archivo original en bytes (texto plano).
     """
-    dev1_engine = AEAD_Engine(key)
     dev3_builder = VaultBuilder()
 
     # Desempaquetamos los componentes
     nonce_leido, aad_leido, ciphertext_leido = dev3_builder.desempaquetar(archivo_vault)
 
-    # Desciframos y validamos la integridad
+    # Analizamos los metadatos para encontrar la llave de este usuario
+    try:
+        metadatos = json.loads(aad_leido.decode("utf-8"))
+    except json.JSONDecodeError:
+        raise IntegrityErrorException("Metadatos AAD inválidos o corruptos.")
+
+    recipients = metadatos.get("recipients", [])
+    user_entry = next((recipient for recipient in recipients if recipient["id"] == user_id), None)
+
+    if not user_entry:
+        raise IntegrityErrorException(f"Usuario {user_id} no autorizado para este archivo.")
+
+    # Desenvolvemos (unwrap) el Symmetric Key usando la llave privada
+    try:
+        file_key = ECCKeyWrapper.unwrap_key(user_entry["encrypted_key"], private_key)
+    except Exception as e:
+        raise IntegrityErrorException(f"Error al descifrar llave contenedora: {e}")
+
+    # Desciframos el ciphertext principal
+    dev1_engine = AEAD_Engine(file_key)
     mensaje_recuperado = dev1_engine.decrypt(nonce_leido, ciphertext_leido, aad_leido)
 
     return mensaje_recuperado
 
 
 def main():
-    llave = RandomnessManager.generate_key()
+    from cryptography.hazmat.primitives.asymmetric import x25519
+    # Ejemplo de uso
+    alice_private = x25519.X25519PrivateKey.generate()
+    alice_public = alice_private.public_key()
+
+    bob_private = x25519.X25519PrivateKey.generate()
+    bob_public = bob_private.public_key()
+
+    recipients = [
+        {"id": "alice", "public_key": alice_public},
+        {"id": "bob", "public_key": bob_public}
+    ]
+
     nombre_archivo = "secreto.txt"
     archivo_original = b"Este es un secreto super importante de la empresa."
-    archivo_cifrado = encriptar(llave, archivo_original, nombre_archivo)
-    archivo_descifrado = desencriptar(llave, archivo_cifrado)
+    archivo_cifrado = encriptar(archivo_original, nombre_archivo, recipients)
+    
+    # Alice intenta descifrar
+    archivo_descifrado_alice = desencriptar(archivo_cifrado, "alice", alice_private)
+    print(f"Alice recupero: {archivo_descifrado_alice}")
 
-    print(f"Archivo original: {archivo_original}")
-    print(f"Archivo cifrado: {archivo_cifrado}")
-    print(f"Archivo descifrado: {archivo_descifrado}")
+    # Bob intenta descifrar
+    archivo_descifrado_bob = desencriptar(archivo_cifrado, "bob", bob_private)
+    print(f"Bob recupero: {archivo_descifrado_bob}")
 
 
 if __name__ == "__main__":
