@@ -1,0 +1,23 @@
+[project]
+name = "secure-document-vault"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Daniel Adrian Galindo Reyes", email = "mseragonf@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=46.0.5"
+]
+
+[dependency-groups]
+dev = [
+    "black>=26.3.1",
+    "flake8>=7.3.0",
+    "pytest>=9.0.2"
+]
+
+[build-system]
+requires = ["uv_build>=0.10.12"]
+build-backend = "uv_build"
