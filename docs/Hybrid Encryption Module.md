@@ -68,7 +68,43 @@ Si se utiliza una clave pública incorrecta durante `wrap_key`:
 ---
 ## 4. Formato del Contenedor Actualizado
 
+El contenedor `.vault` ahora integra de forma nativa la lista de destinatarios dentro de la sección de Metadatos Autenticados (AAD). La estructura lógica se asemeja a:
 
+```json
+{
+  "file_name": "secreto.txt",
+  "version": "1.0.0",
+  "algorithm": "ChaCha20-Poly1305",
+  "recipients": [
+    { 
+      "id": "alice", 
+      "encrypted_key": {
+        "ephemeral_pub": "<hex string>",
+        "nonce": "<hex string>",
+        "encrypted_key": "<hex string>"
+      } 
+    },
+    { 
+      "id": "bob", 
+      "encrypted_key": {
+        "ephemeral_pub": "<hex string>",
+        "nonce": "<hex string>",
+        "encrypted_key": "<hex string>"
+      } 
+    }
+  ],
+  "timestamp": 1729012354
+}
+```
+
+A nivel de serialización binaria, el archivo `.vault` queda de la siguiente manera:
+
+1. **Magic Header** (8 bytes): Identifica que es formato `VAULT10`.
+2. **Nonce Maestro ChaCha20** (12 bytes): Usado para cifrar el archivo plano.
+3. **Longitud de Metadatos** (4 bytes): Tamaño del JSON de los Metadatos.
+4. **Metadatos AAD** (Tamaño variable): Todo el bloque JSON descrito arriba.
+   * *Consideración Crítica:* Al estar estos metadatos inyectados como **AAD (Associated Authenticated Data)** directo al motor ChaCha20, cualquier intento de remover, duplicar o cambiar un recipiente resultará en un "Invalid MAC Tag". Las modificaciones indetectables son matemáticamente inviables. 
+5. **Ciphertext con el MAC Tag Poly1305** (Tamaño variable).
 
 ## Referencias Bibliográficas
 

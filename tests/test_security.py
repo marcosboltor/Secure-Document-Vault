@@ -1,91 +1,95 @@
-import sys
-import os
 import pytest
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from secure_document_vault.encryption_module import (  # noqa: E402
-    RandomnessManager,
-    encriptar,
-    desencriptar,
-    IntegrityErrorException,
-)
+from cryptography.hazmat.primitives.asymmetric import x25519
+from secure_document_vault.core.facade import encriptar, desencriptar
+from secure_document_vault.core.exceptions import IntegrityErrorException
 
 
-# ESCENARIO 1
-# Cifrado y descifrado correcto
+# Helper para crear usuarios rapidamente
+def create_user(user_id):
+    priv = x25519.X25519PrivateKey.generate()
+    return {"id": user_id, "private_key": priv, "public_key": priv.public_key()}
+
+
+# ESCENARIO 1: File shared with 2 users then both can decrypt.
 def test_encrypt_decrypt_success():
-    key = RandomnessManager.generate_key()
+    alice = create_user("alice")
+    bob = create_user("bob")
+    recipients = [alice, bob]
 
     nombre_archivo = "archivo.txt"
     plaintext = b"Mensaje secreto de prueba"
 
-    vault = encriptar(key, plaintext, nombre_archivo)
-    recovered = desencriptar(key, vault)
+    vault = encriptar(plaintext, nombre_archivo, recipients)
 
-    assert recovered == plaintext
+    # Alice should be able to decrypt
+    recovered_alice = desencriptar(vault, "alice", alice["private_key"])
+    assert recovered_alice == plaintext
 
-
-# ESCENARIO 2
-# Detectar modificación en el ciphertext
-def test_ciphertext_tampering():
-    key = RandomnessManager.generate_key()
-
-    plaintext = b"Datos importantes"
-    nombre_archivo = "doc.txt"
-
-    vault = encriptar(key, plaintext, nombre_archivo)
-
-    corrupted = bytearray(vault)
-    corrupted[-5] ^= 1  # modificamos un byte del ciphertext
-
-    with pytest.raises(IntegrityErrorException):
-        desencriptar(key, bytes(corrupted))
+    # Bob should be able to decrypt
+    recovered_bob = desencriptar(vault, "bob", bob["private_key"])
+    assert recovered_bob == plaintext
 
 
-# ESCENARIO 3
-# Detectar modificación en metadatos (AAD)
+# ESCENARIO 2: Unauthorized user cannot decrypt.
+def test_unauthorized_user():
+    alice = create_user("alice")
+    eve = create_user("eve")
+
+    plaintext = b"Secreto de Alice"
+    vault = encriptar(plaintext, "doc.txt", [alice])
+
+    with pytest.raises(IntegrityErrorException, match="no autorizado"):
+        desencriptar(vault, "eve", eve["private_key"])
+
+
+# ESCENARIO 3: Wrong private key then fails.
+def test_wrong_private_key():
+    alice = create_user("alice")
+    fake_alice_key = x25519.X25519PrivateKey.generate()
+
+    plaintext = b"Dato"
+    vault = encriptar(plaintext, "doc.txt", [alice])
+
+    with pytest.raises(IntegrityErrorException, match="Error al descifrar"):
+        desencriptar(vault, "alice", fake_alice_key)
+
+
+# ESCENARIO 4: Tampered recipient list then decryption fails.
 def test_metadata_tampering():
-    key = RandomnessManager.generate_key()
-
+    alice = create_user("alice")
     plaintext = b"Archivo confidencial"
-    nombre_archivo = "secreto.txt"
-
-    vault = encriptar(key, plaintext, nombre_archivo)
+    vault = encriptar(plaintext, "secreto.txt", [alice])
 
     corrupted = bytearray(vault)
-
-    # modificamos un byte dentro de los metadatos
+    # The AAD contains the JSON. Modifying a byte in the first 100 bytes
+    # (after the 24-byte header) alters the AAD.
+    # Let's flip a bit exactly at index 29 (inside the AAD JSON string).
     corrupted[29] ^= 1
 
     with pytest.raises(IntegrityErrorException):
-        desencriptar(key, bytes(corrupted))
+        desencriptar(bytes(corrupted), "alice", alice["private_key"])
 
 
-# ESCENARIO 4
-# Intentar descifrar con llave incorrecta
-def test_wrong_key():
-    key_correct = RandomnessManager.generate_key()
-    key_wrong = RandomnessManager.generate_key()
+# ESCENARIO 5: Detectar modificación en el ciphertext
+def test_ciphertext_tampering():
+    alice = create_user("alice")
+    plaintext = b"Datos importantes"
+    vault = encriptar(plaintext, "doc.txt", [alice])
 
-    plaintext = b"Contenido ultra secreto"
-    nombre_archivo = "empresa.txt"
-
-    vault = encriptar(key_correct, plaintext, nombre_archivo)
+    corrupted = bytearray(vault)
+    # Modify a byte at the very end (ciphertext / MAC tag area)
+    corrupted[-5] ^= 1
 
     with pytest.raises(IntegrityErrorException):
-        desencriptar(key_wrong, vault)
+        desencriptar(bytes(corrupted), "alice", alice["private_key"])
 
 
-# ESCENARIO 5
-# Verificar que el nonce es diferente en cada cifrado
+# ESCENARIO 6: Verificar que el nonce es diferente en cada cifrado
 def test_nonce_randomness():
-    key = RandomnessManager.generate_key()
-
+    alice = create_user("alice")
     plaintext = b"Mismo mensaje"
-    nombre_archivo = "file.txt"
 
-    vault1 = encriptar(key, plaintext, nombre_archivo)
-    vault2 = encriptar(key, plaintext, nombre_archivo)
+    vault1 = encriptar(plaintext, "file.txt", [alice])
+    vault2 = encriptar(plaintext, "file.txt", [alice])
 
     assert vault1 != vault2
