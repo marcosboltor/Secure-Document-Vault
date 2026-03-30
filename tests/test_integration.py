@@ -68,7 +68,8 @@ def test_encrypt_decrypt_empty_file():
 # ---------------------------------------------------------------------------
 
 def test_encrypt_decrypt_binary_content():
-    """Arbitrary binary content (simulates PDF/image) is encrypted and decrypted without loss."""
+    """Arbitrary binary content (simulates PDF/image) is encrypted and decrypted
+    without loss."""
     alice = create_user("alice")
     # Simulates PDF header + arbitrary binary bytes
     plaintext = b"%PDF-1.4\x00\x01\x02\x03" + bytes(range(256)) * 4
@@ -379,7 +380,8 @@ def test_end_to_end_file_types(nombre, contenido):
 # ---------------------------------------------------------------------------
 
 def test_removing_recipient_entry_breaks_access():
-    """Removing Bob from the recipients list in the vault prevents him from decrypting."""
+    """Removing Bob from the recipients list in the vault prevents him from
+    decrypting."""
     alice = create_user("alice")
     bob = create_user("bob")
     plaintext = b"Shared document"
