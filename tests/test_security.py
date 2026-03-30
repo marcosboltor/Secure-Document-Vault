@@ -1,23 +1,14 @@
-import sys
-import os
 import pytest
 from cryptography.hazmat.primitives.asymmetric import x25519
+from secure_document_vault.core.facade import encriptar, desencriptar
+from secure_document_vault.core.exceptions import IntegrityErrorException
 
-from secure_document_vault.encryption_module import (
-    RandomnessManager,
-    encriptar,
-    desencriptar,
-    IntegrityErrorException,
-)
 
 # Helper para crear usuarios rapidamente
 def create_user(user_id):
     priv = x25519.X25519PrivateKey.generate()
-    return {
-        "id": user_id,
-        "private_key": priv,
-        "public_key": priv.public_key()
-    }
+    return {"id": user_id, "private_key": priv, "public_key": priv.public_key()}
+
 
 # ESCENARIO 1: File shared with 2 users then both can decrypt.
 def test_encrypt_decrypt_success():
@@ -70,8 +61,9 @@ def test_metadata_tampering():
     vault = encriptar(plaintext, "secreto.txt", [alice])
 
     corrupted = bytearray(vault)
-    # The AAD contains the JSON. Modifying a byte in the first 100 bytes (after the 24-byte header)
-    # alters the AAD. Let's flip a bit exactly at index 29 (inside the AAD JSON string).
+    # The AAD contains the JSON. Modifying a byte in the first 100 bytes
+    # (after the 24-byte header) alters the AAD.
+    # Let's flip a bit exactly at index 29 (inside the AAD JSON string).
     corrupted[29] ^= 1
 
     with pytest.raises(IntegrityErrorException):
@@ -101,4 +93,3 @@ def test_nonce_randomness():
     vault2 = encriptar(plaintext, "file.txt", [alice])
 
     assert vault1 != vault2
-
