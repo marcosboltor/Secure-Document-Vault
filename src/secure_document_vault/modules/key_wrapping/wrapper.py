@@ -34,9 +34,9 @@ class ECCKeyWrapper:
         encrypted_key = aead.encrypt(nonce, file_key, None)
 
         from cryptography.hazmat.primitives import serialization
+
         ephemeral_pub_bytes = ephemeral_public_key.public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
         )
 
         return {
