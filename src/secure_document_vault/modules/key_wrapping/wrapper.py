@@ -33,7 +33,11 @@ class ECCKeyWrapper:
         aead = ChaCha20Poly1305(wrapping_key)
         encrypted_key = aead.encrypt(nonce, file_key, None)
 
-        ephemeral_pub_bytes = ephemeral_public_key.public_bytes_raw()
+        from cryptography.hazmat.primitives import serialization
+
+        ephemeral_pub_bytes = ephemeral_public_key.public_bytes(
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+        )
 
         return {
             "ephemeral_pub": ephemeral_pub_bytes.hex(),

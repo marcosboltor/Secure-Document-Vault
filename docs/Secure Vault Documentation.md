@@ -106,7 +106,7 @@ El sistema no garantiza resistencia frente a:
 El diseño adopta un nivel de seguridad clásico de ≥128 bits. La migración a esquemas post-cuánticos requeriría primitivas adicionales no consideradas en este diseño base.
 
 ## 2. Diagrama de arquitectura
-![Diagrama de Arquitectura - Cripto drawio (2)](https://github.com/user-attachments/assets/04e69cc7-1d32-47c6-93be-82037ca8ee54)
+<img width="1356" height="701" alt="Diagrama de Arquitectura - Cripto" src="https://github.com/user-attachments/assets/985cc767-ba31-4bba-a7b0-164d8be08fed" />
 
 
 ## 3. Requerimientos de seguridad
