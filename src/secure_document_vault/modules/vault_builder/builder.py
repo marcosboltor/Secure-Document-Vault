@@ -122,9 +122,8 @@ class VaultBuilder:
         # Como la firma Ed25519 es siempre 64 bytes, verificamos consistencia.
         # Pero para ser genéricos, leemos SigLen primero probando desde el final.
 
-        # Leemos los últimos 4+64 bytes como caso Ed25519 (firma siempre 64 bytes)
+        # Los últimos 4+64 bytes: SigLen(4) + Signature(64)
         pos_sig_len = len(vault_bytes) - 64 - 4
-        longitud_firma = struct.unpack("<I", vault_bytes[pos_sig_len:pos_sig_len + 4])[0]
         signature = vault_bytes[pos_sig_len + 4:]
         ciphertext_con_tag = vault_bytes[fin_aad:pos_sig_len]
 
