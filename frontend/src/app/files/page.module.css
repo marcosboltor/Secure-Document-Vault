@@ -1,43 +1,202 @@
+.container {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.headerSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2.5rem;
+}
+
 .title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-headline);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-label);
+  font-size: 0.95rem;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.primaryBtn {
+  background: var(--accent-gradient);
+  color: #000000;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  transition: all 0.3s;
+}
+
+.primaryBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
+}
+
+.secondaryBtn {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--text-body);
+  border: 1px solid var(--border-subtle);
+  padding: 0.7rem 1.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.tableCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 .table {
-  background: var(--bg-card);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  overflow: hidden;
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.header {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  padding: 1rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border);
+.table th {
+  text-align: left;
+  padding: 1.25rem 1.5rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-label);
+  letter-spacing: 0.15em;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: rgba(255, 255, 255, 0.01);
 }
 
-.row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  padding: 1rem;
-  font-size: 0.875rem;
-  border-bottom: 1px solid var(--border);
+.table td {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-body);
+  font-size: 0.9rem;
 }
 
-.row:last-child {
-  border-bottom: none;
-}
-
-.name {
+.fileName {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
+  gap: 1.25rem;
+}
+
+.fileIcon {
+  width: 40px;
+  height: 40px;
+  background-color: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-tertiary);
+}
+
+.nameText {
+  color: var(--text-headline);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.statusText {
+  font-size: 0.7rem;
+  color: var(--color-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  background-color: #1e293b;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-tertiary);
+  font-weight: 800;
+  border: 1px solid var(--border-subtle);
+}
+
+.moreIcon {
+  color: var(--text-label);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.moreIcon:hover {
+  color: var(--color-tertiary);
+}
+
+.tableFooter {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-label);
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.pagination {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.pagination button {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-body);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+  background-color: rgba(212, 175, 55, 0.1);
+  color: var(--color-tertiary);
+}
+
+.pagination button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }

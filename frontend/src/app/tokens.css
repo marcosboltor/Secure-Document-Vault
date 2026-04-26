@@ -1,0 +1,62 @@
+/* Design System Tokens */
+
+:root {
+  /* Colors - Raw Palettes */
+  --color-primary: #0a0e14;
+  --color-secondary: #1e293b;
+  --color-tertiary: #d4af37; 
+  --color-gold-light: #f3e5ab;
+  --color-gold-dark: #b8860b;
+  --color-neutral-dark: #f8fafc;
+  --color-neutral-light: #0f172a;
+  --color-danger: #fca5a5;
+  
+  /* Typography & Spacing */
+  --font-family: var(--font-outfit), system-ui, sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --space-unit: 8px;
+
+  /* Default Theme (Dark) */
+  --bg-app: #06090e;
+  --bg-surface: #0c111a;
+  --bg-sidebar: #04060a;
+  --text-headline: #ffffff;
+  --text-body: #a4b1cd;
+  --text-label: #64748b;
+  
+  --border-subtle: rgba(212, 175, 55, 0.15);
+  --btn-primary-bg: var(--color-tertiary);
+  --btn-primary-text: #000000;
+  --btn-secondary-bg: var(--color-secondary);
+  --btn-secondary-text: #ffffff;
+
+  --accent-gradient: linear-gradient(135deg, #d4af37 0%, #f3e5ab 50%, #b8860b 100%);
+}
+
+[data-theme='dark'] {
+  --bg-app: #06090e;
+  --bg-surface: #0c111a;
+  --bg-sidebar: #04060a;
+  --text-headline: #ffffff;
+  --text-body: #a4b1cd;
+  --border-subtle: rgba(212, 175, 55, 0.15);
+}
+
+/* Refined Light Theme - Less "White", more "Muted/Cream" */
+[data-theme='light'] {
+  --bg-app: #f2f4f7; /* Muted gray/blue background */
+  --bg-surface: #ffffff;
+  --bg-sidebar: #0a0e14; /* Keeping the professional dark sidebar */
+  --text-headline: #111827;
+  --text-body: #4b5563;
+  --text-label: #6b7280;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+}
+
+/* Base Styles */
+h1, h2, h3 {
+  font-weight: 700;
+  color: var(--text-headline);
+}
