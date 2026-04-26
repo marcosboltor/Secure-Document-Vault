@@ -1,4 +1,5 @@
 import hashlib
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
@@ -29,7 +30,10 @@ class DocumentSigner:
         :param public_key: Clave pública Ed25519.
         :return: Fingerprint como string hexadecimal (64 caracteres).
         """
-        raw_bytes = public_key.public_bytes_raw()
+
+        raw_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+        )
         return hashlib.sha256(raw_bytes).hexdigest()
 
     @staticmethod

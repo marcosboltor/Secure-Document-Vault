@@ -56,20 +56,28 @@ document.getElementById("btn-add-user").addEventListener("click", async () => {
             
             pub_bytes = km.get_public_key("${userId}")
             priv_bytes = km.get_private_key("${userId}")
+            sign_pub_bytes = km.get_signing_public_key("${userId}")
+            sign_priv_bytes = km.get_signing_private_key("${userId}")
             
             pub_str = pub_bytes.decode('utf-8')
             priv_str = priv_bytes.decode('utf-8')
+            sign_pub_str = sign_pub_bytes.decode('utf-8')
+            sign_priv_str = sign_priv_bytes.decode('utf-8')
         `);
         
         let pubStr = engine.globals.get('pub_str');
         let privStr = engine.globals.get('priv_str');
+        let signPubStr = engine.globals.get('sign_pub_str');
+        let signPrivStr = engine.globals.get('sign_priv_str');
         
         // Agregar a la "DB" JS
         let newUser = {
             id: userId,
             name: name,
             public_key: pubStr,
-            private_key: privStr
+            private_key: privStr,
+            signing_public_key: signPubStr,
+            signing_private_key: signPrivStr
         };
         listaUsuarios.push(newUser);
         
@@ -181,10 +189,15 @@ document.getElementById("btn-encrypt").addEventListener("click", async () => {
         
         let destinatariosJSON = JSON.stringify(destinatariosElegidos);
         
+        // Usaremos al primer usuario de la lista como el "Firmante" (Signer) por defecto
+        let signer = listaUsuarios[0];
+        
         // Inyectar a Python
         engine.globals.set("f_bytes", bytesArray);
         engine.globals.set("f_nombre", fileToEncrypt.name);
         engine.globals.set("f_destinatarios_json", destinatariosJSON);
+        engine.globals.set("f_signer_id", signer.id);
+        engine.globals.set("f_signer_priv_pem", signer.signing_private_key);
         
         await engine.runPythonAsync(`
             from secure_document_vault.core.facade import encriptar
@@ -203,8 +216,11 @@ document.getElementById("btn-encrypt").addEventListener("click", async () => {
                     "public_key": pub_obj
                 })
             
+            # Recrear llave privada del firmante
+            signer_priv_obj = serialization.load_pem_private_key(f_signer_priv_pem.encode('utf-8'), password=None)
+
             # Mandamos llamar al facade multi-usuario nativo tuyo
-            vault_bytes = encriptar(bytes(f_bytes), f_nombre, objetos_destinatarios)
+            vault_bytes = encriptar(bytes(f_bytes), f_nombre, objetos_destinatarios, f_signer_id, signer_priv_obj)
             vault_ba = bytearray(vault_bytes)
         `);
         
@@ -238,14 +254,19 @@ document.getElementById("btn-decrypt").addEventListener("click", async () => {
         engine.globals.set("v_id", loggeado.id);
         engine.globals.set("v_priv_pem", loggeado.private_key);
         
+        // Usamos la llave del primer usuario como la del firmante (demo)
+        let signer = listaUsuarios[0];
+        engine.globals.set("v_signer_pub_pem", signer.signing_public_key);
+        
         await engine.runPythonAsync(`
             from secure_document_vault.core.facade import desencriptar
             from secure_document_vault.core.exceptions import IntegrityErrorException
             from cryptography.hazmat.primitives import serialization
             
             priv_key_obj = serialization.load_pem_private_key(v_priv_pem.encode('utf-8'), password=None)
+            signer_pub_obj = serialization.load_pem_public_key(v_signer_pub_pem.encode('utf-8'))
             
-            original_bytes = desencriptar(bytes(v_bytes), v_id, priv_key_obj)
+            original_bytes = desencriptar(bytes(v_bytes), v_id, priv_key_obj, signer_pub_obj)
             original_ba = bytearray(original_bytes)
             v_error = ""
         `);

@@ -13,7 +13,7 @@ def encriptar(
     nombre_archivo: str,
     recipients_info: list,
     signer_id: str,
-    signer_private_key: ed25519.Ed25519PrivateKey
+    signer_private_key: ed25519.Ed25519PrivateKey,
 ) -> bytes:
     """
     Cifra un archivo en bytes, lo firma digitalmente y
@@ -48,14 +48,13 @@ def encriptar(
         nombre_archivo,
         recipients=recipients_metadata,
         signer_id=signer_id,
-        signer_fingerprint=fingerprint
+        signer_fingerprint=fingerprint,
     )
 
     # Generar Nonce y cifrar
     dev1_engine = AEAD_Engine(file_key)
     nonce_generado = dev2_randomness.generate_nonce()
-    ciphertext = dev1_engine.encrypt(nonce_generado,
-                                     archivo_en_bytes, aad_bytes)
+    ciphertext = dev1_engine.encrypt(nonce_generado, archivo_en_bytes, aad_bytes)
 
     # Firmar datos (AAD y Ciphertext)
     data_to_sign = aad_bytes + ciphertext
@@ -65,16 +64,18 @@ def encriptar(
         nonce=nonce_generado,
         aad_metadatos=aad_bytes,
         ciphertext_con_tag=ciphertext,
-        signature=sign
+        signature=sign,
     )
 
     return archivo_vault
 
 
-def desencriptar(archivo_vault: bytes,
-                 user_id: str,
-                 private_key,
-                 signer_public_key: ed25519.Ed25519PublicKey) -> bytes:
+def desencriptar(
+    archivo_vault: bytes,
+    user_id: str,
+    private_key,
+    signer_public_key: ed25519.Ed25519PublicKey,
+) -> bytes:
     """
     Verifica la firma, desempaqueta y descifra un archivo .vault.
 
