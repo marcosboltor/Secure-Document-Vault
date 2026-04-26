@@ -1,13 +1,11 @@
-# Software Architect reviews everything by default
-* @DanielGalindoDev
-
 # Documentation files assigned to doc reviewer
 /docs/ @RickSiphone
-*.md @RickSiphone
 
-# Source code files assigned to Development Team
-/src/ @marcosboltor
-
-# Test files (Global Integration & Modular Unit Tests) assigned to QA reviewer
+# Test files assigned to QA/test reviewer
 /tests/ @SebastianHdzDev
-/src/**/tests/ @SebastianHdzDev
+
+# Source code files assigned to code reviewer
+/src/secure_document_vault/ @marcosboltor
+
+# Software Architect reviews everything else
+* @DanielGalindoDev
