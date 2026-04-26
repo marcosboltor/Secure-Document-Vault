@@ -1,0 +1,82 @@
+.sidebar {
+  width: 280px;
+  height: 100vh;
+  background-color: #020617; /* Darker than app bg for contrast */
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 0;
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+.logoSection {
+  padding: 0 2rem;
+  margin-bottom: 3rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.logoIcon {
+  width: 40px;
+  height: 40px;
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logoText h2 {
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  color: var(--text-headline);
+  margin-bottom: 0.25rem;
+}
+
+.logoText p {
+  font-size: 0.65rem;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  color: var(--text-label);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.navLink:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--text-body);
+}
+
+.active {
+  background-color: rgba(16, 185, 129, 0.05);
+  color: var(--color-tertiary);
+  border-left-color: var(--color-tertiary);
+}
+
+.bottomNav {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+}

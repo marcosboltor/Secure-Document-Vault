@@ -1,41 +1,86 @@
+"use client";
+
 import styles from "./page.module.css";
-import { Shield, Lock, Search, User } from "lucide-react";
+import { Shield, User, Key, ArrowRight, Fingerprint, Info } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    router.push("/dashboard/files");
+  };
   return (
     <div className={styles.container}>
-      <main className={styles.main}>
-        <div className="label" style={{ marginBottom: '-16px' }}>Vault Security</div>
-        <Shield size={64} strokeWidth={1.5} color="var(--color-tertiary)" />
-        <h1 className={styles.title}>Secure Document Vault</h1>
-        <p className={styles.description}>
-          A high-performance, secure environment for your most sensitive documents.
-          Built with Zero-Knowledge encryption.
-        </p>
-        
-        <div className={styles.actions}>
-          <button className={`${styles.button} ${styles.primary}`}>
-            Get Started
+      <div className={styles.card}>
+        <header className={styles.header}>
+          <div className={styles.logoIcon}>
+            <Shield size={24} color="var(--color-tertiary)" fill="var(--color-tertiary)" fillOpacity={0.2} />
+          </div>
+          <div>
+            <h1 className={styles.title}>FORTRESS</h1>
+            <div className={styles.status}>
+              <span style={{ 
+                width: '6px', 
+                height: '6px', 
+                backgroundColor: 'var(--color-tertiary)', 
+                borderRadius: '50%',
+                boxShadow: '0 0 8px var(--color-tertiary)'
+              }}></span>
+              SYSTEM ONLINE
+            </div>
+          </div>
+        </header>
+
+        <form className={styles.form} onSubmit={handleLogin}>
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Authorized Email</label>
+            <div className={styles.inputWrapper}>
+              <User size={16} className={styles.inputIcon} />
+              <input 
+                type="email" 
+                className={styles.input} 
+                placeholder="officer@fortress.sys" 
+              />
+            </div>
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Secure Password</label>
+            <div className={styles.inputWrapper}>
+              <Key size={16} className={styles.inputIcon} />
+              <input 
+                type="password" 
+                className={styles.input} 
+                placeholder="••••••••••••" 
+              />
+            </div>
+          </div>
+
+          <button type="submit" className={styles.primaryButton}>
+            Initialize Access <ArrowRight size={18} />
           </button>
-          <button className={`${styles.button} ${styles.secondary}`}>
-            Documentation
-          </button>
+        </form>
+
+        <div className={styles.divider}>
+          <div className={styles.dividerLine}></div>
+          OR
+          <div className={styles.dividerLine}></div>
         </div>
 
-        {/* Example of bottom bar from the image */}
-        <div style={{ 
-          marginTop: '2rem', 
-          display: 'flex', 
-          gap: '1rem', 
-          padding: '1rem', 
-          background: 'rgba(255,255,255,0.03)',
-          borderRadius: 'var(--radius-lg)'
-        }}>
-          <Lock size={20} color="var(--text-label)" />
-          <Search size={20} color="var(--text-label)" />
-          <User size={20} color="var(--text-label)" />
+        <button className={styles.secondaryButton}>
+          <Fingerprint size={20} /> Biometric Unlock
+        </button>
+
+        <div className={styles.footerLink}>
+          <Info size={14} /> Request Access
         </div>
-      </main>
+      </div>
+
+      <footer className={styles.footerNote}>
+        Protocol Level 4 Authorization Required
+      </footer>
     </div>
   );
 }
