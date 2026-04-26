@@ -628,4 +628,3 @@ def test_security_signature_removed_rejected():
         desencriptar(
             bytes(tampered), "alice", alice["private_key"], alice["signing_public_key"]
         )
-
