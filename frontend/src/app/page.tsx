@@ -21,15 +21,17 @@ export default function Home() {
             <Image
               src="/logo.png"
               alt="Vault Logo"
-              width={80}
-              height={80}
+              width={160}
+              height={160}
               className={styles.logoImg}
               priority
               quality={100}
             />
           </div>
-          <h1 className={styles.title}>VAULT</h1>
-          <div className={styles.badge}>Level 4 Authorization</div>
+          <div className={styles.logoText}>
+            <h2>VAULT</h2>
+            <p>Institutional Security</p>
+          </div>
         </div>
 
         <form className={styles.form} onSubmit={handleLogin}>

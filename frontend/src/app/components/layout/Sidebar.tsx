@@ -28,11 +28,11 @@ export default function Sidebar() {
           <Image 
             src="/logo.png" 
             alt="Vault Logo" 
-            width={120} /* Increased for better quality/retina */
-            height={120} 
+            width={160} 
+            height={160} 
             className={styles.logoImg}
             priority
-            quality={100} /* Max quality */
+            quality={100}
           />
         </div>
         <div className={styles.logoText}>

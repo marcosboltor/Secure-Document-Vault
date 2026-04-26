@@ -5,7 +5,7 @@
   align-items: center;
   justify-content: center;
   background-color: var(--bg-app);
-  background-image: 
+  background-image:
     radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.05) 0%, transparent 50%),
     linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
@@ -35,14 +35,19 @@
 }
 
 .logoSection {
-  text-align: center;
-  margin-bottom: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 3.5rem;
 }
 
 .logoWrapper {
-  margin-bottom: 1.5rem;
+  width: 60px;
+  height: 60px;
   display: flex;
+  align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .logoImg {
@@ -53,26 +58,24 @@
   filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.3));
 }
 
-.title {
-  font-size: 2rem;
+.logoText h2 {
+  font-size: 1.6rem;
   letter-spacing: 0.3em;
   font-weight: 900;
   background: var(--accent-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 0.5rem;
+  line-height: 1;
+  margin-bottom: 0.2rem;
 }
 
-.badge {
+.logoText p {
   font-size: 0.65rem;
   font-weight: 800;
-  color: var(--color-tertiary);
+  color: var(--text-label);
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  background-color: rgba(212, 175, 55, 0.1);
-  padding: 0.4rem 1rem;
-  border-radius: 50px;
-  display: inline-block;
+  margin: 0;
 }
 
 .form {
@@ -93,19 +96,23 @@
 
 .input {
   width: 100%;
-  background-color: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--border-subtle);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-md);
   padding: 1rem;
-  color: #ffffff;
+  color: #1a1a1a;
   font-size: 0.95rem;
   transition: all 0.3s;
+}
+
+.input::placeholder {
+  color: #94a3b8;
 }
 
 .input:focus {
   outline: none;
   border-color: var(--color-tertiary);
-  background-color: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
 
 .primaryButton {
@@ -180,10 +187,16 @@
   transition: all 0.3s;
 }
 
-.biometricButton:hover {
+.biometricButton:hover:not(:disabled) {
   background-color: rgba(212, 175, 55, 0.05);
   color: var(--color-tertiary);
   border-color: var(--color-tertiary);
+}
+
+.biometricButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  filter: grayscale(1);
 }
 
 .footer {

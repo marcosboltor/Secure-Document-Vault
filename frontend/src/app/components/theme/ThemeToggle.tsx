@@ -8,9 +8,15 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
-    const currentTheme = document.documentElement.getAttribute("data-theme") as "dark" | "light" || "dark";
-    setTheme(currentTheme);
-  }, []);
+    // Sync theme with document attribute on mount
+    const root = document.documentElement;
+    const currentTheme = root.getAttribute("data-theme") as "dark" | "light" | null;
+    
+    if (currentTheme && currentTheme !== theme) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTheme(currentTheme);
+    }
+  }, [theme]);
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
