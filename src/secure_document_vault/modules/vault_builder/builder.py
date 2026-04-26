@@ -40,7 +40,10 @@ class VaultBuilder:
         return json.dumps(metadatos).encode("utf-8")
 
     def empaquetar(
-        self, nonce: bytes, aad_metadatos: bytes, ciphertext_con_tag: bytes,
+        self,
+        nonce: bytes,
+        aad_metadatos: bytes,
+        ciphertext_con_tag: bytes,
         signature: bytes = None,
     ) -> bytes:
         """Empaqueta los componentes en el formato .vault.
@@ -60,11 +63,7 @@ class VaultBuilder:
         longitud_metadatos = struct.pack("<I", len(aad_metadatos))
 
         archivo_vault_final = (
-            header
-            + nonce
-            + longitud_metadatos
-            + aad_metadatos
-            + ciphertext_con_tag
+            header + nonce + longitud_metadatos + aad_metadatos + ciphertext_con_tag
         )
 
         if signature is not None:
@@ -124,7 +123,7 @@ class VaultBuilder:
 
         # Los últimos 4+64 bytes: SigLen(4) + Signature(64)
         pos_sig_len = len(vault_bytes) - 64 - 4
-        signature = vault_bytes[pos_sig_len + 4:]
+        signature = vault_bytes[pos_sig_len + 4 :]
         ciphertext_con_tag = vault_bytes[fin_aad:pos_sig_len]
 
         return nonce, aad_metadatos, ciphertext_con_tag, signature
