@@ -74,7 +74,7 @@ def encriptar(
 def desencriptar(archivo_vault: bytes,
                  user_id: str,
                  private_key,
-                 signer_public_key: ed25519.Ed25519PrivateKey) -> bytes:
+                 signer_public_key: ed25519.Ed25519PublicKey) -> bytes:
     """
     Verifica la firma, desempaqueta y descifra un archivo .vault.
 
