@@ -532,3 +532,100 @@ def test_removing_recipient_entry_breaks_access():
         desencriptar(
             tampered_vault, "alice", alice["private_key"], alice["signing_public_key"]
         )
+
+
+# ---------------------------------------------------------------------------
+# SCENARIO 21: Security and Signature Verification
+# Verifies the system's robustness against signature tampering and key misuse.
+# ---------------------------------------------------------------------------
+
+
+def test_security_valid_signature_accepted():
+    """Valid signature and data results in successful decryption."""
+    alice = create_user("alice")
+    plaintext = b"Valid signed content"
+
+    vault = encriptar(
+        plaintext, "secure.txt", [alice], alice["id"], alice["signing_private_key"]
+    )
+
+    recovered = desencriptar(
+        vault, "alice", alice["private_key"], alice["signing_public_key"]
+    )
+    assert recovered == plaintext
+
+
+def test_security_modified_ciphertext_rejected():
+    """Modifying the ciphertext part of the vault causes a signature failure."""
+    alice = create_user("alice")
+    plaintext = b"Sensitive data"
+    vault = encriptar(
+        plaintext, "data.txt", [alice], alice["id"], alice["signing_private_key"]
+    )
+
+    # Locate ciphertext position (after header, nonce, metalen, metadata)
+    meta_len = struct.unpack("<I", vault[20:24])[0]
+    ciphertext_start = 24 + meta_len
+
+    tampered = bytearray(vault)
+    # Corrupt the first byte of ciphertext (which is before the signature)
+    tampered[ciphertext_start] ^= 0xFF
+
+    with pytest.raises(IntegrityErrorException, match="Firma digital inválida"):
+        desencriptar(
+            bytes(tampered), "alice", alice["private_key"], alice["signing_public_key"]
+        )
+
+
+def test_security_modified_metadata_rejected():
+    """Modifying the AAD metadata causes a signature failure."""
+    alice = create_user("alice")
+    plaintext = b"Important info"
+    vault = encriptar(
+        plaintext, "info.txt", [alice], alice["id"], alice["signing_private_key"]
+    )
+
+    # AAD metadata starts at byte 24
+    tampered = bytearray(vault)
+    tampered[24] ^= 0xFF
+
+    with pytest.raises(IntegrityErrorException, match="Firma digital inválida"):
+        desencriptar(
+            bytes(tampered), "alice", alice["private_key"], alice["signing_public_key"]
+        )
+
+
+def test_security_wrong_public_key_rejected():
+    """Using the wrong signer public key for verification fails."""
+    alice = create_user("alice")
+    mallory = create_user("mallory")
+    plaintext = b"Top secret"
+
+    vault = encriptar(
+        plaintext, "secret.txt", [alice], alice["id"], alice["signing_private_key"]
+    )
+
+    # Decrypting with Mallory's public key instead of Alice's
+    with pytest.raises(IntegrityErrorException, match="Firma digital inválida"):
+        desencriptar(
+            vault, "alice", alice["private_key"], mallory["signing_public_key"]
+        )
+
+
+def test_security_signature_removed_rejected():
+    """Removing the signature context (reverting to VAULT10) is rejected."""
+    alice = create_user("alice")
+    plaintext = b"Signed data"
+    vault = encriptar(
+        plaintext, "signed.txt", [alice], alice["id"], alice["signing_private_key"]
+    )
+
+    # Revert header to VAULT10 (format v1)
+    tampered = bytearray(vault)
+    tampered[0:8] = b"VAULT10\x00"
+
+    with pytest.raises(IntegrityErrorException, match="no contiene una firma digital"):
+        desencriptar(
+            bytes(tampered), "alice", alice["private_key"], alice["signing_public_key"]
+        )
+
