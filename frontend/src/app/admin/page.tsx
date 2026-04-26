@@ -1,5 +1,4 @@
-"use client";
-
+import { Users } from "lucide-react";
 import styles from "./page.module.css";
 
 export default function AdminPage() {
@@ -10,22 +9,20 @@ export default function AdminPage() {
 
   return (
     <div>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Admin</h1>
-      </div>
+      <h1 className={styles.title}>Admin</h1>
       <div className={styles.table}>
-        <div className={styles.tableHeader}>
+        <div className={styles.header}>
           <span>User</span>
           <span>Email</span>
           <span>Role</span>
         </div>
-        {users.map((user) => (
-          <div key={user.id} className={styles.row}>
-            <span className={styles.name}>{user.name}</span>
-            <span>{user.email}</span>
-            <span className={user.role === "admin" ? styles.admin : styles.user}>
-              {user.role}
+        {users.map((u) => (
+          <div key={u.id} className={styles.row}>
+            <span className={styles.name}>
+              <Users size={16} /> {u.name}
             </span>
+            <span>{u.email}</span>
+            <span className={u.role === "admin" ? styles.admin : styles.user}>{u.role}</span>
           </div>
         ))}
       </div>

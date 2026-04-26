@@ -13,12 +13,10 @@
   align-items: center;
   gap: 1rem;
   color: var(--text-dim);
-  transition: all 0.2s;
   cursor: pointer;
 }
 
-.dropzone:hover,
-.active {
+.dropzone:hover {
   border-color: var(--primary);
   background: rgba(16, 185, 129, 0.05);
 }
@@ -50,12 +48,6 @@
   background: none;
   border: none;
   color: var(--text-dim);
+  font-size: 1.25rem;
   cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 4px;
-}
-
-.file button:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text);
 }

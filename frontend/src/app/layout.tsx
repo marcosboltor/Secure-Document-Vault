@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import Sidebar from "@/presentation/components/Sidebar";
+import SearchBar from "@/presentation/components/SearchBar";
+import styles from "./layout.module.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Secure Document Vault",
-  description: "Zero-knowledge document encryption",
+  title: "Vault",
 };
 
 export default function RootLayout({
@@ -15,20 +17,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-theme="dark">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                var theme = localStorage.getItem("theme");
-                if (theme) document.documentElement.setAttribute("data-theme", theme);
-              })();
-            `,
-          }}
-        />
-      </head>
-      <body className={inter.className}>{children}</body>
+    <html lang="en">
+      <body className={inter.className}>
+        <div className={styles.container}>
+          <Sidebar />
+          <SearchBar />
+          <main className={styles.main}>{children}</main>
+        </div>
+      </body>
     </html>
   );
 }

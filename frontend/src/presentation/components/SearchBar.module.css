@@ -1,15 +1,15 @@
-.header {
+.bar {
   position: fixed;
   top: 0;
   left: 240px;
   right: 0;
   height: 60px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 1.5rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
   z-index: 10;
 }
 
@@ -36,13 +36,7 @@
   outline: none;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.iconBtn {
+.icon {
   background: none;
   border: none;
   color: var(--text-dim);
@@ -52,10 +46,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
 }
 
-.iconBtn:hover {
+.icon:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text);
 }
