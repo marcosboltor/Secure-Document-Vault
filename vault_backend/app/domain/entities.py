@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
+from typing import List
+
 
 @dataclass
 class User:
@@ -9,6 +10,7 @@ class User:
     email: str
     public_key_encryption: str
     public_key_signing: str
+
 
 @dataclass
 class VaultFile:

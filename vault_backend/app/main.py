@@ -1,10 +1,19 @@
 from fastapi import FastAPI
 from vault_backend.app.presentation.api import users, files
+from dataclasses import dataclass
+
+
+@dataclass
+class User:
+    id: str
+
 
 app = FastAPI(title="Secure Document Vault")
 
+
 app.include_router(users.router)
 app.include_router(files.router)
+
 
 @app.get("/")
 async def root():
