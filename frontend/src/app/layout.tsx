@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isLogin = pathname === "/";
+  const isAuthPage = pathname === "/" || pathname === "/register";
 
   return (
     <html lang="en" className={outfit.variable} suppressHydrationWarning>
@@ -38,7 +38,7 @@ export default function RootLayout({
         />
       </head>
       <body className={outfit.className}>
-        {isLogin ? (
+        {isAuthPage ? (
           <main className={styles.loginMain}>{children}</main>
         ) : (
           <div className={styles.appContainer}>
