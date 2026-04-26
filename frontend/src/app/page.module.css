@@ -1,199 +1,89 @@
-.container {
+.main {
+  min-height: 100vh;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  background-color: var(--bg-app);
-  padding: 1rem;
 }
 
 .card {
+  background: var(--bg-card);
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
   width: 100%;
-  max-width: 440px;
-  background-color: var(--bg-surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md);
-  padding: 3rem 2.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2.5rem;
+  max-width: 360px;
 }
 
-.header {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.logoIcon {
+.logo {
   width: 48px;
   height: 48px;
-  background-color: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.1);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
 }
 
 .title {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: var(--text-headline);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
-.status {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: var(--color-tertiary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  text-transform: uppercase;
+.subtitle {
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
 }
 
 .form {
-  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-}
-
-.inputGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--text-label);
-  text-transform: uppercase;
-}
-
-.inputWrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.inputIcon {
-  position: absolute;
-  left: 1rem;
-  color: var(--text-label);
+  gap: 1rem;
 }
 
 .input {
-  width: 100%;
-  background-color: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-sm);
-  padding: 1rem 1rem 1rem 2.75rem;
-  color: var(--text-headline);
-  font-family: inherit;
-  font-size: 0.9rem;
-  transition: border-color 0.2s;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.input::placeholder {
+  color: var(--text-dim);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--color-tertiary);
+  border-color: var(--primary);
 }
 
-.primaryButton {
-  width: 100%;
-  background-color: var(--color-tertiary);
-  color: var(--color-primary);
+.button {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
   border: none;
-  border-radius: var(--radius-sm);
-  padding: 1rem;
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  background: var(--primary);
+  color: #000;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  gap: 0.5rem;
+  transition: opacity 0.2s;
 }
 
-.primaryButton:hover {
+.button:hover {
   opacity: 0.9;
 }
 
-.primaryButton:active {
-  transform: scale(0.98);
-}
-
-.divider {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  color: var(--text-label);
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.dividerLine {
-  flex: 1;
-  height: 1px;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.secondaryButton {
-  width: 100%;
-  background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-sm);
-  padding: 1rem;
-  color: var(--text-headline);
-  font-weight: 600;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.secondaryButton:hover {
-  background-color: rgba(255, 255, 255, 0.03);
-}
-
-.footerLink {
-  font-size: 0.8rem;
-  color: var(--text-label);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.footerLink:hover {
-  color: var(--text-headline);
-}
-
-.footerNote {
-  margin-top: 2rem;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  color: var(--text-label);
-  text-transform: uppercase;
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -1,5 +1,6 @@
-import Sidebar from "@/presentation/components/layout/Sidebar";
-import TopBar from "@/presentation/components/layout/TopBar";
+import Sidebar from "@/presentation/components/Sidebar";
+import TopBar from "@/presentation/components/TopBar";
+import styles from "./dashboard.module.css";
 
 export default function DashboardLayout({
   children,
@@ -7,14 +8,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div className={styles.layout}>
       <Sidebar />
-      <div style={{ flex: 1, marginLeft: "280px", display: "flex", flexDirection: "column" }}>
-        <TopBar />
-        <main style={{ marginTop: "64px", padding: "2rem", flex: 1 }}>
-          {children}
-        </main>
-      </div>
+      <TopBar />
+      <main className={styles.main}>{children}</main>
     </div>
   );
 }

@@ -1,27 +1,34 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "../presentation/styles/globals.css";
+import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Secure Document Vault",
-  description: "Advanced zero-knowledge document encryption and signing",
+  description: "Zero-knowledge document encryption",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">
-      <body className={inter.variable}>
-        {children}
-      </body>
+    <html lang="en" data-theme="dark">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var theme = localStorage.getItem("theme");
+                if (theme) document.documentElement.setAttribute("data-theme", theme);
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }

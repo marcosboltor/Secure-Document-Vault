@@ -1,0 +1,28 @@
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #161616;
+  --text: #e5e5e5;
+  --text-dim: #737373;
+  --primary: #10b981;
+  --border: #262626;
+}
+
+[data-theme="light"] {
+  --bg: #f5f5f5;
+  --bg-card: #ffffff;
+  --text: #171717;
+  --text-dim: #737373;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+  transition: background 0.2s, color 0.2s;
+}
