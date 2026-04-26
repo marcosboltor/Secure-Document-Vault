@@ -17,7 +17,7 @@ import {
   CheckCircle,
   XCircle
 } from "lucide-react";
-import { fileRepository } from "@/infrastructure/repositories/local-file.repository";
+import { fileRepository } from "@/infrastructure/repositories/api-file.repository";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
 import { VaultFile } from "@/core/domain/file.repository";
 
@@ -60,6 +60,12 @@ export default function FilesPage() {
     setIsProcessing(file.id);
 
     try {
+      // Lazy-load content if it's empty
+      let encryptedContent = file.encryptedContent;
+      if (encryptedContent.length === 0) {
+        encryptedContent = await (fileRepository as any).getFileContent(file.id);
+      }
+
       // Get private keys from session
       const privateKeys = JSON.parse(sessionStorage.getItem("vault_private_keys") || "{}");
       const userPrivX = privateKeys.encryption?.private;
@@ -67,7 +73,7 @@ export default function FilesPage() {
       if (!userPrivX) throw new Error("Private key not found in session. Please log in again.");
 
       const decrypted = await vaultRepository.decrypt({
-        vaultFile: file.encryptedContent,
+        vaultFile: encryptedContent,
         userId: currentUser.id,
         userPrivateKeyBase64: userPrivX,
         signerPublicKeyBase64: file.signerPublicKeyBase64

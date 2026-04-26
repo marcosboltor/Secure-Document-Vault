@@ -215,3 +215,29 @@
   color: var(--text-label);
   font-size: 0.75rem;
 }
+.loadingBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 4rem;
+  color: var(--text-label);
+  font-size: 0.9rem;
+}
+
+.spinner {
+  animation: rotate 1s linear infinite;
+  color: var(--color-tertiary);
+}
+
+.emptyRoster {
+  padding: 4rem;
+  text-align: center;
+  color: var(--text-label);
+  font-style: italic;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

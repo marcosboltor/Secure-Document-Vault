@@ -13,8 +13,8 @@ import {
   Circle
 } from "lucide-react";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
-import { userRepository } from "@/infrastructure/repositories/mock-user.repository";
-import { fileRepository } from "@/infrastructure/repositories/local-file.repository";
+import { userRepository } from "@/infrastructure/repositories/api-user.repository";
+import { fileRepository } from "@/infrastructure/repositories/api-file.repository";
 import { User } from "@/core/domain/user.repository";
 import { useRouter } from "next/navigation";
 
