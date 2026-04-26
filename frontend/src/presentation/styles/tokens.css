@@ -1,0 +1,67 @@
+/* Design System Tokens */
+:root {
+  /* Colors - Base */
+  --color-primary: #101d2d;
+  --color-secondary: #334155;
+  --color-tertiary: #10b981;
+  --color-neutral: #f8fafc;
+  --color-background: #0a0a0a;
+  --color-surface: #121212;
+  --color-danger: #fca5a5;
+
+  /* Semantic - Dark Mode (Default) */
+  --bg-app: var(--color-background);
+  --bg-surface: var(--color-surface);
+  --text-headline: var(--color-neutral);
+  --text-body: #94a3b8;
+  --text-label: #64748b;
+  
+  /* Component Tokens */
+  --btn-primary-bg: #c0cce0; /* Derived from the "Primary" button in image */
+  --btn-primary-text: var(--color-primary);
+  --btn-secondary-bg: var(--color-secondary);
+  --btn-secondary-text: var(--color-neutral);
+  --btn-inverted-bg: var(--color-neutral);
+  --btn-inverted-text: var(--color-primary);
+  
+  /* Typography */
+  --font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-size-headline: 2.5rem;
+  --font-size-body: 1rem;
+  --font-size-label: 0.875rem;
+  
+  /* Spacing & Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --space-unit: 8px;
+}
+
+/* Base Styles using Tokens */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-body);
+  font-family: var(--font-family);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .headline {
+  color: var(--text-headline);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.label {
+  font-size: var(--font-size-label);
+  font-weight: 500;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
