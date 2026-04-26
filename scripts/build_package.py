@@ -5,13 +5,13 @@ import zipfile
 def package_sdk():
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
     frontend_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "frontend")
+        os.path.join(os.path.dirname(__file__), "..", "vault-frontend", "public")
     )
 
     if not os.path.exists(frontend_dir):
         os.makedirs(frontend_dir)
 
-    output_zip = os.path.join(frontend_dir, "secure_document_vault.zip")
+    output_zip = os.path.join(frontend_dir, "library.zip")
 
     print(f"Packing SDK from {src_dir} to {output_zip}...")
 
