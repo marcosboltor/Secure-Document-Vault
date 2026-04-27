@@ -1,137 +1,100 @@
+# Secure Document Vault - Backend API
 
-# 🛡️ Secure Document Vault - Backend API
+Backend robusto construido con **FastAPI** siguiendo los principios de **Clean Architecture** y **Diseño Modular**. Esta arquitectura está diseñada para separar las reglas de negocio de los detalles técnicos, facilitando el desarrollo en equipo y garantizando la seguridad **Zero-Knowledge**.
 
-El backend de orquestación y almacenamiento seguro para el  **Secure Document Vault** . Este sistema actúa como el custodio de confianza baja (Zero-Knowledge) para contenedores cifrados (`.vault`), gestionando la persistencia de blobs binarios, autenticación, metadatos y validación de integridad.
+---
 
-Construido siguiendo estrictamente los principios de **Clean Architecture** para asegurar la máxima escalabilidad, seguridad y una clara separación de responsabilidades.
+## Arquitectura Jerárquica del Proyecto
 
-## 🏗️ Arquitectura del Sistema
+A continuación se detalla la estructura completa del proyecto y la responsabilidad de cada componente:
 
-El proyecto está diseñado bajo el principio de **Clean Architecture** (Arquitectura Limpia). La regla de oro aquí es la  **Regla de Dependencia** : las dependencias en el código fuente solo pueden apuntar hacia adentro. Las capas internas (Dominio) no saben nada sobre las capas externas (Bases de datos, Frameworks web).
-
-### Estructura de Directorios
-
-La estructura del código base (ubicada dentro de la carpeta `app/`) se distribuye de la siguiente manera:
-
-```
-vault_backend/
+```text
+vault-backend/
 ├── app/
-│   ├── main.py                     # Punto de entrada de FastAPI
-│   ├── core/                       # Configuración global y constantes
-│   │   ├── config.py               # Settings (Pydantic) para el .env
-│   │   ├── exceptions.py           # Excepciones globales (AppException)
-│   │   └── dependencies.py         # Inyección de dependencias (Depends)
-│   ├── domain/                     # Capa 1: Reglas de Negocio Empresariales
-│   │   ├── entities.py             # Modelos puros (User, VaultFile)
-│   │   └── repositories.py         # Interfaces/Contratos (UserRepository, FileStorage)
-│   ├── application/                # Capa 2: Reglas de Negocio de la Aplicación
-│   │   ├── dtos/                   # Modelos Pydantic para entrada/salida de datos
-│   │   └── use_cases/              # Lógica de orquestación (Upload, Retrieve)
-│   ├── infrastructure/             # Capa 3: Frameworks y Drivers
-│   │   ├── database/               # Implementación de SQLAlchemy (Modelos y Sesión)
-│   │   ├── storage/                # Implementación del Local File System
-│   │   └── logging.py              # Configuración de Structlog
-│   └── presentation/               # Capa 4: Adaptadores de Interfaz (Web)
-│       ├── api/                    # Routers de FastAPI (endpoints v1)
-│       └── middlewares/            # CORS, Manejo de errores HTTP
-├── tests/                          # Suite de pruebas automatizadas (Pytest)
-├── .env.example                    # Plantilla de variables de entorno
-├── requirements.txt                # Dependencias del proyecto
-└── alembic.ini                     # Configuración de migraciones SQL
+│   ├── main.py                     # Punto de entrada de la aplicación (FastAPI App)
+│   ├── api/                        # Capa de Orquestación de la API
+│   │   ├── router.py               # Router principal que une todos los módulos
+│   │   └── middlewares/            # Filtros globales (CORS, Auth, Logging)
+│   ├── core/                       # Núcleo de Configuración
+│   │   ├── config.py               # Gestión de variables de entorno (Pydantic Settings)
+│   │   ├── logger.py               # Configuración centralizada de logs (CDMX Timezone)
+│   │   └── exceptions/             # Manejadores de errores globales de FastAPI
+│   └── modules/                    # Módulos de Dominio (Contextos Delimitados)
+│       ├── users/                  # Gestión de Identidades y Llaves Públicas
+│       │   ├── domain/             # Capa 1: Reglas de Negocio Puras
+│       │   │   ├── entities/       # Modelos de dominio (User)
+│       │   │   └── repositories/   # Interfaces (Abstracciones de persistencia)
+│       │   ├── application/        # Capa 2: Casos de Uso
+│       │   │   └── use_cases/      # Lógica de aplicación (RegisterUser, Login)
+│       │   ├── infrastructure/     # Capa 3: Implementaciones Técnicas
+│       │   │   ├── repositories/   # Implementación SQLModel/PostgreSQL
+│       │   │   └── datasources/    # Conexiones específicas a datos
+│       │   └── presentation/       # Capa 4: Interfaz Externa
+│       │       ├── api/            # Routers de FastAPI para usuarios
+│       │       ├── schemas/        # DTOs de Pydantic (Entrada/Salida)
+│       │       └── di/             # Inyección de dependencias local
+│       ├── files/                  # Gestión de Documentos y Blobs
+│       │   ├── domain/             # Entidades y Repositorios de Archivos
+│       │   ├── application/        # Casos de Uso (Upload, Download, Delete)
+│       │   ├── infrastructure/     # Implementación de Storage (Local/S3) y DB
+│       │   └── presentation/       # Endpoints de archivos y Schemas
+│       └── share/                  # Recursos Compartidos entre Módulos
+│           ├── infrastructure/     # Implementaciones comunes
+│           │   └── db/             # Sesión de Base de Datos y Alembic
+│           └── exceptions/         # Excepciones base de la aplicación
+├── pyproject.toml                  # Configuración de dependencias (uv)
+└── alembic.ini                     # Configuración de la herramienta de migraciones
 ```
 
-### ¿Qué va en cada capa y por qué?
+---
 
-1. **Domain (`app/domain/`)** :
+## Descripción de las Capas (Clean Architecture)
 
-* **Qué contiene** : Las Entidades (modelos de datos sin dependencias de ORMs) y las Interfaces (clases abstractas que definen contratos, como `UserRepository`).
-* **Por qué** : Es el núcleo del sistema. Aquí residen las reglas de negocio puras. No importa si usamos Postgres o MySQL, o si usamos FastAPI o Flask; el dominio nunca cambia por motivos de infraestructura.
+### 1. Capa de Dominio (`domain`)
 
-1. **Application (`app/application/`)** :
+Es el corazón de la aplicación. Contiene las **Entidades** (datos) y las **Interfaces** (contratos).
 
-* **Qué contiene** : Los Casos de Uso (ej. `UploadDocumentUseCase`) y los DTOs (Data Transfer Objects).
-* **Por qué** : Orquesta el flujo de datos. Recibe llamadas de la API, solicita datos al dominio/infraestructura, aplica la lógica específica de la aplicación y devuelve resultados. Solo depende de la capa de Dominio.
+* **Independencia**: No puede importar nada de otras capas.
+* **Contenido**: `entities.py`, `repositories.py`.
 
-1. **Infrastructure (`app/infrastructure/`)** :
+### 2. Capa de Aplicación (`application`)
 
-* **Qué contiene** : El código que interactúa con agentes externos. Aquí viven los modelos reales de SQLAlchemy, la conexión a la base de datos y la escritura física de archivos en el disco duro.
-* **Por qué** : Aísla los detalles técnicos. Si mañana decidimos cambiar el guardado local por AWS S3, **solo** se modifica esta carpeta implementando el contrato definido en la capa de Dominio, sin tocar los casos de uso.
+Orquestra el flujo de datos hacia y desde las entidades de dominio.
 
-1. **Presentation (`app/presentation/`)** :
+* **Responsabilidad**: Aquí residen los **Casos de Uso**. Ejemplo: "Al registrar un usuario, verificar si el email existe y guardar su llave pública".
+* **Contenido**: `use_cases/`.
 
-* **Qué contiene** : Los "Routers" o Controladores de FastAPI y Middlewares.
-* **Por qué** : Es el mecanismo de entrega. Su única responsabilidad es recibir peticiones HTTP, validarlas (usando Pydantic DTOs), pasarlas a la capa de Aplicación (Casos de Uso) y devolver una respuesta HTTP al cliente. No debe contener "ifs" ni bucles de lógica de negocio.
+### 3. Capa de Infraestructura (`infrastructure`)
 
-## ✨ Características Principales
+Contiene las implementaciones técnicas de los repositorios definidos en el dominio.
 
-* **Almacenamiento Desacoplado** : Gestión dual entre base de datos relacional (metadatos) y sistema de archivos (blobs binarios).
-* **Defensa contra Tampering (Cumplimiento D4)** : Auditoría automática para detectar inconsistencias físicas o alteraciones manuales en los archivos almacenados.
-* **Prevención AAD (Additional Authenticated Data)** : Validación cruzada de la firma digital (Ed25519) del contenedor `.vault` contra los metadatos SQL para prevenir escalamiento de privilegios en base de datos.
-* **Seguridad por Diseño** : Manejador de errores estricto que previene fuga de información (Information Disclosure) al cliente.
-* **API Documentada** : Especificación OpenAPI 3.0 completamente integrada.
+* **Responsabilidad**: Hablar con la Base de Datos (PostgreSQL), sistemas de archivos, o APIs externas.
+* **Contenido**: `repositories/`, `datasources/`.
 
-## 🚀 Requisitos Previos
+### 4. Capa de Presentación (`presentation`)
 
-* Python 3.10 o superior
+Es la puerta de entrada para el mundo exterior (en este caso, una API REST).
 
-## ⚙️ Configuración y Despliegue
+* **Responsabilidad**: Validar los datos de entrada (Schemas) y devolver respuestas HTTP.
+* **Contenido**: `api/` (Routers), `schemas/` (Pydantic models).
 
-La aplicación utiliza variables de entorno administradas mediante `pydantic-settings`. Copia el archivo de ejemplo para comenzar:
+---
 
-```
-cp .env.example .env
-```
+## Flujo de Trabajo para Desarrolladores
 
-### Entorno Local
+Para modificar o agregar una funcionalidad en este backend, sigue este orden:
 
-Sigue estos pasos para levantar el entorno de desarrollo en tu máquina local:
+1. **Definir el Modelo**: Si necesitas una tabla nueva, créala en `modules/xxx/domain/entities/`.
+2. **Definir el Contrato**: Crea la interfaz en `repositories/` del dominio.
+3. **Implementar**: Crea el código que habla con la DB en `infrastructure/repositories/`.
+4. **Lógica**: Crea el Caso de Uso en `application/`.
+5. **Exponer**: Crea el endpoint en `presentation/api/` y define sus Schemas.
 
-```
-# 1. Ejecutar migraciones de base de datos (Alembic)
-uv run alembic upgrade head
+---
 
-# 2. Iniciar servidor de desarrollo
-uv run uvicorn app.main:app --reload
-```
+## Comandos Rápidos
 
-La API estará disponible en: `http://localhost:8000`
-
-## 📚 Documentación de la API
-
-La API expone una documentación interactiva Swagger. Una vez que el servidor esté en ejecución, puedes acceder a:
-
-* **Swagger UI:** `http://localhost:8000/docs`
-* **ReDoc:** `http://localhost:8000/redoc`
-
-### Endpoints Principales
-
-* `POST /api/v1/users` - Registro de personal y llaves públicas.
-* `GET /api/v1/users` - Listado de personal autorizado.
-* `POST /api/v1/files` - Carga atómica de contenedores `.vault` y metadatos.
-* `GET /api/v1/files` - Listado de archivos accesibles (filtrado por Auth).
-* `GET /api/v1/files/{id}/content` - Descarga en streaming de blobs binarios.
-
-## 🧪 Pruebas y Calidad
-
-El proyecto incluye una suite exhaustiva de pruebas unitarias implementadas con `pytest` que mockean las dependencias de infraestructura para garantizar validaciones de negocio rápidas y confiables.
-
-```
-# Ejecutar toda la suite de pruebas
-pytest tests/ -v
-
-# Comprobar la cobertura de código
-pytest tests/ --cov=app/application
-```
-
-**Pruebas de Seguridad Destacadas:**
-
-* `test_tampering_detection`: Valida el comportamiento de la API ante archivos corruptos en disco.
-* `test_aad_metadata_inconsistency`: Verifica el bloqueo ante inyecciones maliciosas en metadatos SQL.
-
-## 🛠️ Tecnologías
-
-* **Framework:** [FastAPI](https://fastapi.tiangolo.com/ "null")
-* **ORM:** [SQLAlchemy](https://www.sqlalchemy.org/ "null") + Alembic
-* **Validación:** Pydantic
-* **Observabilidad:** Structlog
-* **Testing:** Pytest
+* **Instalar**: `uv sync`
+* **Correr Dev**: `uv run uvicorn app.main:app --reload`
+* **Migraciones**: `uv run alembic revision --autogenerate -m "nombre"` -> `uv run alembic upgrade head`
+* **Calidad**: `uv run black .` && `uv run flake8 vault-backend`
