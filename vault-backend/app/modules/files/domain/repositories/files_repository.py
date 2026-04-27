@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List
 from app.modules.files.domain.entities.files import VaultFile
 
+
 class FilesRepository(ABC):
     @abstractmethod
     async def get_files(self, user_id: str) -> List[VaultFile]:
