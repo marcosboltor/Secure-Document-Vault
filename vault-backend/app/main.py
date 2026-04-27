@@ -1,16 +1,12 @@
 from app.core.logger import setup_logging
-setup_logging()
-
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
-
-from app.api.router import api_router
-
-# Instalamos los middlewares y protectores en la aplicación
+from app.api.router import router
 from app.api.middlewares.cors import setup_cors
 from app.core.config import settings
 from app.core.exceptions.global_handlers import setup_exception_handlers
+
+setup_logging()
 
 
 @asynccontextmanager
@@ -23,8 +19,7 @@ app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=li
 setup_cors(app)
 setup_exception_handlers(app)
 
-
-app.include_router(api_router)
+app.include_router(router)
 
 
 @app.get("/", tags=["Health"])

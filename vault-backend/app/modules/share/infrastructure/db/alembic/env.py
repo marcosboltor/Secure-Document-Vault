@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from logging.config import fileConfig
 import sqlalchemy as sa
 from alembic import context
@@ -16,6 +15,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+
 def run_migrations_offline() -> None:
     """Ejecutar migraciones en modo 'offline'."""
     url = settings.DB_URL_ASYNC
@@ -29,12 +29,14 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
+
 def do_run_migrations(connection: sa.engine.Connection) -> None:
     """Configurar y ejecutar migraciones en una conexión activa."""
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 async def run_migrations_online() -> None:
     """Ejecutar migraciones en modo 'online'."""
@@ -47,6 +49,7 @@ async def run_migrations_online() -> None:
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
+
 
 if context.is_offline_mode():
     run_migrations_offline()
