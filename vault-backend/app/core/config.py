@@ -1,0 +1,44 @@
+from typing import List
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "Secure Document Vault API"
+    VERSION: str = "0.1.0"
+
+    LOG_LEVEL: str = "INFO"
+
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+    DB_HOST: str
+    DB_PORT: str
+
+    CORS_ALLOW_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ALLOW_CREDENTIALS: bool = True
+    CORS_ALLOW_METHODS: List[str] = ["*"]
+    CORS_ALLOW_HEADERS: List[str] = ["*"]
+    CORS_EXPOSE_HEADERS: List[str] = ["*"]
+    CORS_MAX_AGE: int = 600
+
+    @property
+    def DATABASE_URL(self) -> str:
+        return (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
+            f"{self.DB_HOST}:{self.DB_PORT}/{self.POSTGRES_DB}"
+        )
+
+    @property
+    def DB_URL_ASYNC(self) -> str:
+        return (
+            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
+            f"{self.DB_HOST}:{self.DB_PORT}/{self.POSTGRES_DB}"
+        )
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
+
+
+settings = Settings()

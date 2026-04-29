@@ -1,0 +1,19 @@
+.toggle {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-headline);
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.toggle:hover {
+  background: var(--border-subtle);
+  color: var(--color-tertiary);
+}

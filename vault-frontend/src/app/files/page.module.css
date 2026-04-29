@@ -1,0 +1,241 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-headline);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-label);
+  font-size: 0.95rem;
+  max-width: 600px;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.searchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 1rem;
+  width: 300px;
+  transition: all 0.3s;
+}
+
+.searchBox:focus-within {
+  border-color: var(--color-tertiary);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
+}
+
+.searchBox input {
+  background: transparent;
+  border: none;
+  color: #FFFFFF;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.searchBox input:focus {
+  outline: none;
+}
+
+.searchBox svg {
+  color: var(--text-label);
+}
+
+.filterBtn {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-headline);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterBtn:hover {
+  background-color: rgba(212, 175, 55, 0.05);
+  border-color: var(--color-tertiary);
+}
+
+.tableCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  min-height: 400px;
+  overflow: hidden;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  padding: 1.25rem 1.5rem;
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.table td {
+  padding: 1.25rem 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-body);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.fileNameCell {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 700;
+  color: var(--text-headline);
+}
+
+.fileIcon {
+  color: var(--color-tertiary);
+}
+
+.ownerCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.badge {
+  font-size: 0.6rem;
+  font-weight: 900;
+  background-color: rgba(212, 175, 55, 0.1);
+  color: var(--color-tertiary);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.accessCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.authorized {
+  color: #10B981;
+}
+
+.unauthorized {
+  color: #EF4444;
+}
+
+.actionGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actionBtn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-label);
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background-color: rgba(212, 175, 55, 0.05);
+  border-color: var(--color-tertiary);
+  color: var(--color-tertiary);
+}
+
+.actionBtn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #EF4444;
+  color: #EF4444;
+}
+
+.loadingState, .emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 2rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  color: var(--border-subtle);
+  margin-bottom: 1.5rem;
+}
+
+.emptyState h3 {
+  font-size: 1.25rem;
+  color: var(--text-headline);
+  margin-bottom: 0.5rem;
+}
+
+.emptyState p {
+  color: var(--text-label);
+  max-width: 300px;
+}
+
+.spinner {
+  animation: rotate 1s linear infinite;
+  color: var(--color-tertiary);
+  margin-bottom: 1rem;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
