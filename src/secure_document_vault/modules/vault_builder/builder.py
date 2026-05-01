@@ -37,8 +37,11 @@ class VaultBuilder:
                 "fingerprint": signer_fingerprint or "",
             }
 
-        canonical = json.dumps(metadatos, sort_keys=True, separators=(",", ":"))
-        return canonical.encode("utf-8")
+        return json.dumps(
+            metadatos,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
 
     def empaquetar(
         self,
