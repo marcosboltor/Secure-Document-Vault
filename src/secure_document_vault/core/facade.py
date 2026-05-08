@@ -71,23 +71,34 @@ def encriptar(
     return archivo_vault
 
 
-def _verificar_firma_y_fingerprint(signer_public_key, data_signed, signature,
-                                   metadatos):
-    """Función auxiliar para reducir la complejidad de desencriptar."""
+def _verificar_firma(signer_public_key, data_signed, signature):
+    """Verifica la firma en los bytes crudos antes de procesar nada."""
     try:
         DocumentSigner.verify(signer_public_key, data_signed, signature)
     except Exception:
         raise IntegrityErrorException("ALERTA: Firma digital inválida.")
 
+
+def _verificar_fingerprint(signer_public_key, metadatos):
+    """Verifica que el fingerprint coincida para evitar suplantación."""
     signer_info = metadatos.get("signer")
     if signer_info:
         expected_fingerprint = signer_info.get("fingerprint", "")
         actual_fingerprint = DocumentSigner.get_fingerprint(signer_public_key)
         if not hmac.compare_digest(expected_fingerprint, actual_fingerprint):
             raise IntegrityErrorException(
-                "ALERTA: El fingerprint del firmante no coincide con la"
+                "ALERTA: El fingerprint del firmante no coincide con la "
                 "clave pública proporcionada. Posible sustitución de identidad."
             )
+
+
+def _parsear_metadatos(aad: bytes):
+    """Intenta parsear los metadatos de forma segura."""
+    try:
+        return json.loads(aad.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        # Atrapamos UnicodeDecodeError por si el atacante corrompió los bytes
+        raise IntegrityErrorException("Metadatos AAD inválidos o corruptos.")
 
 
 def _validar_y_obtener_llave(metadatos, user_id, private_key):
@@ -124,20 +135,18 @@ def desencriptar(
 
     nonce, aad, ciphertext, signature = result
 
-    # Parsear los metadatos una sola vez de forma segura
-    try:
-        metadatos = json.loads(aad.decode("utf-8"))
-    except json.JSONDecodeError:
-        raise IntegrityErrorException("Metadatos AAD inválidos o corruptos.")
-
-    # 1. Delegar verificación de firma
+    # 1. VERIFICAR FIRMA PRIMERO (En bytes crudos, protección máxima)
     data_signed = aad + ciphertext
-    _verificar_firma_y_fingerprint(signer_public_key, data_signed, signature, metadatos)
+    _verificar_firma(signer_public_key, data_signed, signature)
 
-    # 2. Delegar validación de usuario y obtención de llave
+    # 2. PARSEAR Y VERIFICAR FINGERPRINT (Solo si la firma fue válida)
+    metadatos = _parsear_metadatos(aad)
+    _verificar_fingerprint(signer_public_key, metadatos)
+
+    # 3. VALIDAR USUARIO Y OBTENER LLAVE
     file_key = _validar_y_obtener_llave(metadatos, user_id, private_key)
 
-    # 3. Descifrar
+    # 4. DESCIFRAR
     dev1_engine = AEAD_Engine(file_key)
     mensaje_recuperado = dev1_engine.decrypt(nonce, ciphertext, aad)
 
