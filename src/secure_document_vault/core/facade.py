@@ -71,6 +71,41 @@ def encriptar(
     return archivo_vault
 
 
+def _verificar_firma_y_fingerprint(signer_public_key, data_signed, signature,
+                                   metadatos):
+    """Función auxiliar para reducir la complejidad de desencriptar."""
+    try:
+        DocumentSigner.verify(signer_public_key, data_signed, signature)
+    except Exception:
+        raise IntegrityErrorException("ALERTA: Firma digital inválida.")
+
+    signer_info = metadatos.get("signer")
+    if signer_info:
+        expected_fingerprint = signer_info.get("fingerprint", "")
+        actual_fingerprint = DocumentSigner.get_fingerprint(signer_public_key)
+        if not hmac.compare_digest(expected_fingerprint, actual_fingerprint):
+            raise IntegrityErrorException(
+                "ALERTA: El fingerprint del firmante no coincide con la"
+                "clave pública proporcionada. Posible sustitución de identidad."
+            )
+
+
+def _validar_y_obtener_llave(metadatos, user_id, private_key):
+    """Función auxiliar para validar acceso y obtener la llave del archivo."""
+    recipients = metadatos.get("recipients", [])
+    user_entry = next((r for r in recipients if r["id"] == user_id), None)
+
+    if not user_entry:
+        raise IntegrityErrorException(
+            f"Usuario {user_id} no autorizado para este archivo."
+        )
+
+    try:
+        return ECCKeyWrapper.unwrap_key(user_entry["encrypted_key"], private_key)
+    except Exception as e:
+        raise IntegrityErrorException(f"Error al descifrar llave contenedora: {e}")
+
+
 def desencriptar(
     archivo_vault: bytes,
     user_id: str,
@@ -79,63 +114,30 @@ def desencriptar(
 ) -> bytes:
     """
     Verifica la firma, desempaqueta y descifra un archivo .vault.
-
-    :param archivo_vault: Archivo en formato .vault en bytes.
-    :param user_id: Identificador del usuario que intenta descifrar.
-    :param private_key: Llave privada (X25519PrivateKey) del usuario.
-    :signer_public_key: Llave publica del usuario que firmó el archivo
-    :return: Archivo original en bytes (texto plano).
     """
     dev3_builder = VaultBuilder()
-
     result = dev3_builder.desempaquetar(archivo_vault)
 
     # Verificar que el contenedor tenga firma digital
-    if len(result) == 4:
-        nonce, aad, ciphertext, signature = result
-    else:
+    if len(result) != 4:
         raise IntegrityErrorException("El archivo no contiene una firma digital.")
 
-    data_signed = aad + ciphertext
+    nonce, aad, ciphertext, signature = result
 
-    # Verificar la firma primero
-    try:
-        DocumentSigner.verify(signer_public_key, data_signed, signature)
-    except Exception:
-        raise IntegrityErrorException("ALERTA: Firma digital inválida.")
-
-    metadatos = json.loads(aad.decode("utf-8"))
-
-    # Verificar fingerprint
-    signer_info = metadatos.get("signer")
-    if signer_info:
-        expected_fingerprint = signer_info.get("fingerprint", "")
-        actual_fingerprint = DocumentSigner.get_fingerprint(signer_public_key)
-        if not hmac.compare_digest(expected_fingerprint, actual_fingerprint):
-            raise IntegrityErrorException(
-                "ALERTA: El fingerprint del firmante no coincide con la "
-                "clave pública proporcionada. Posible sustitución de identidad."
-            )
-
-    # Leer los AAD y validar acceso
+    # Parsear los metadatos una sola vez de forma segura
     try:
         metadatos = json.loads(aad.decode("utf-8"))
     except json.JSONDecodeError:
         raise IntegrityErrorException("Metadatos AAD inválidos o corruptos.")
 
-    recipients = metadatos.get("recipients", [])
-    user_entry = next((r for r in recipients if r["id"] == user_id), None)
+    # 1. Delegar verificación de firma
+    data_signed = aad + ciphertext
+    _verificar_firma_y_fingerprint(signer_public_key, data_signed, signature, metadatos)
 
-    if not user_entry:
-        raise IntegrityErrorException(f"""Usuario {user_id} no autorizado
-                                      para este archivo.""")
+    # 2. Delegar validación de usuario y obtención de llave
+    file_key = _validar_y_obtener_llave(metadatos, user_id, private_key)
 
-    # Desenvolver la llave y descifrar
-    try:
-        file_key = ECCKeyWrapper.unwrap_key(user_entry["encrypted_key"], private_key)
-    except Exception as e:
-        raise IntegrityErrorException(f"Error al descifrar llave contenedora: {e}")
-
+    # 3. Descifrar
     dev1_engine = AEAD_Engine(file_key)
     mensaje_recuperado = dev1_engine.decrypt(nonce, ciphertext, aad)
 
