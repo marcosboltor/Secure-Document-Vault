@@ -6,6 +6,7 @@ from secure_document_vault.modules.key_wrapping import ECCKeyWrapper
 from secure_document_vault.modules.aead import AEAD_Engine
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from secure_document_vault.modules.signing.signer import DocumentSigner
+import hmac
 
 
 def encriptar(
@@ -102,6 +103,19 @@ def desencriptar(
         DocumentSigner.verify(signer_public_key, data_signed, signature)
     except Exception:
         raise IntegrityErrorException("ALERTA: Firma digital inválida.")
+
+    metadatos = json.loads(aad.decode("utf-8"))
+
+    # Verificar fingerprint
+    signer_info = metadatos.get("signer")
+    if signer_info:
+        expected_fingerprint = signer_info.get("fingerprint", "")
+        actual_fingerprint = DocumentSigner.get_fingerprint(signer_public_key)
+        if not hmac.compare_digest(expected_fingerprint, actual_fingerprint):
+            raise IntegrityErrorException(
+                "ALERTA: El fingerprint del firmante no coincide con la "
+                "clave pública proporcionada. Posible sustitución de identidad."
+            )
 
     # Leer los AAD y validar acceso
     try:
