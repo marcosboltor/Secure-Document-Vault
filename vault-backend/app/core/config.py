@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     CORS_EXPOSE_HEADERS: List[str] = ["*"]
     CORS_MAX_AGE: int = 600
 
+    JWT_SECRET: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60
+    JWT_REFRESH_EXPIRE_MINUTES: int = 10080  # 7 días
+
     @property
     def DATABASE_URL(self) -> str:
         return (
