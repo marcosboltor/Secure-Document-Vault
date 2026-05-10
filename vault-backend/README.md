@@ -90,11 +90,48 @@ Para modificar o agregar una funcionalidad en este backend, sigue este orden:
 4. **Lógica**: Crea el Caso de Uso en `application/`.
 5. **Exponer**: Crea el endpoint en `presentation/api/` y define sus Schemas.
 
+## Ejecución con Docker
+
+El proyecto está dockerizado para facilitar el despliegue y el desarrollo local mediante contenedores.
+
+### Pasos para iniciar
+
+1.  **Configurar variables de entorno**:
+    Copia el archivo de ejemplo y ajusta los valores si es necesario:
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  **Levantar los servicios**:
+    Construye la imagen y levanta los contenedores (Base de Datos PostgreSQL y API FastAPI):
+    ```bash
+    docker-compose up --build
+    ```
+    > **Las migraciones de Alembic se ejecutan automáticamente** al iniciar el contenedor `api` mediante `start.sh` (`alembic upgrade head`). Las tablas se crean/actualizan antes de que el servidor comience a aceptar peticiones.
+
+3.  **Verificar**:
+    La API estará disponible en [http://localhost:8000](http://localhost:8000).
+    La documentación interactiva (Swagger) se encuentra en [http://localhost:8000/docs](http://localhost:8000/docs).
+
+### Gestión de Contenedores
+
+*   **Detener servicios**: `docker-compose down`
+*   **Ver logs en tiempo real**: `docker-compose logs -f api`
+*   **Ejecutar migraciones manualmente**: 
+    ```bash
+    docker-compose exec api uv run alembic upgrade head
+    ```
+*   **Limpiar volúmenes (borrar base de datos)**: `docker-compose down -v`
+
 ---
 
-## Comandos Rápidos
+## Comandos Rápidos (Desarrollo Local sin Docker)
 
-* **Instalar**: `uv sync`
-* **Correr Dev**: `uv run uvicorn app.main:app --reload`
-* **Migraciones**: `uv run alembic revision --autogenerate -m "nombre"` -> `uv run alembic upgrade head`
-* **Calidad**: `uv run black .` && `uv run flake8 vault-backend`
+1. **Instalar dependencias**: `uv sync`
+2. **Aplicar migraciones** (crea/actualiza las tablas en la DB): `uv run alembic upgrade head`
+3. **Correr servidor de desarrollo**: `uv run uvicorn app.main:app --reload`
+
+### Otros comandos útiles
+
+* **Generar nueva migración**: `uv run alembic revision --autogenerate -m "descripcion"`
+* **Calidad de código**: `uv run black .` && `uv run flake8 vault-backend`

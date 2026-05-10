@@ -1,0 +1,48 @@
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: vault-postgres-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vault_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vault_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-vault_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vault_user} -d ${POSTGRES_DB:-vault_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vault-fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME:-"Secure Document Vault API"}
+      - VERSION=${VERSION:-"0.1.0"}
+      - LOG_LEVEL=${LOG_LEVEL:-"INFO"}
+      - POSTGRES_USER=${POSTGRES_USER:-vault_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vault_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-vault_db}
+      - DB_HOST=db 
+      - DB_PORT=${DB_PORT:-5432}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-["http://localhost:3000"]}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-60}
+      - JWT_REFRESH_EXPIRE_MINUTES=${JWT_REFRESH_EXPIRE_MINUTES:-10080}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app  
+
+volumes:
+  postgres_data:
