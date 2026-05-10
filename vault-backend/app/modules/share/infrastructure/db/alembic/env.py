@@ -7,7 +7,9 @@ from sqlmodel import SQLModel
 
 from app.core.config import settings
 
-# Esta es la metadata de SQLModel donde se registrarán todos tus modelos
+from app.modules.users.infrastructure.models.user_models import UserModel 
+
+# target_metadata contiene el esquema completo tras los imports anteriores
 target_metadata = SQLModel.metadata
 
 # Configuración de logs de Alembic
