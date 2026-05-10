@@ -19,7 +19,7 @@ app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=li
 setup_cors(app)
 setup_exception_handlers(app)
 
-app.include_router(router)
+app.include_router(router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Health"])
