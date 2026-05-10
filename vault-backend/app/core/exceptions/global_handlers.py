@@ -2,6 +2,7 @@ import logging
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.modules.share.exceptions.base_exceptions import AppBaseException
 
 # Usamos el logger configurado globalmente
@@ -37,6 +38,46 @@ def setup_exception_handlers(app: FastAPI):
                 "code": "VALIDATION_ERROR",
                 "message": "Los datos enviados no son validos.",
                 "details": exc.errors(),
+            },
+        )
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(request: Request, exc: IntegrityError):
+        """
+        Manejador para errores de integridad de base de datos
+        (violaciones de constraint, duplicados, FK inválidas).
+        """
+        logger.error(
+            f"Database IntegrityError at {request.url.path}: {str(exc)}",
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "status": "error",
+                "code": "DATABASE_INTEGRITY_ERROR",
+                "message": "Conflicto de integridad en la base de datos. "
+                "El recurso ya existe o viola una restricción.",
+            },
+        )
+
+    @app.exception_handler(SQLAlchemyError)
+    async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+        """
+        Manejador para errores genéricos de base de datos
+        (conexión fallida, pool agotado, errores operacionales).
+        """
+        logger.error(
+            f"Database SQLAlchemyError at {request.url.path}: {str(exc)}",
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={
+                "status": "error",
+                "code": "DATABASE_CONNECTION_ERROR",
+                "message": "Error de comunicación con la base de datos. "
+                "Intente de nuevo más tarde.",
             },
         )
 

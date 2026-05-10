@@ -4,6 +4,15 @@ from app.modules.share.exceptions.base_exceptions import (
 )
 
 
+class UserNotFoundError(DomainException):
+    def __init__(self, user_id: str):
+        super().__init__(
+            message=f"Usuario con ID {user_id} no encontrado.",
+            code="USER_NOT_FOUND",
+            status_code=404,
+        )
+
+
 class FileNotFoundError(DomainException):
     def __init__(self, file_id: str):
         super().__init__(

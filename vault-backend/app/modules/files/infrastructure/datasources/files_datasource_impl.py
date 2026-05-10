@@ -1,56 +1,112 @@
+import logging
 from typing import List, Optional
-from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy import select, or_
 from app.modules.files.domain.datasources.files_datasource import FilesDatasource
 from app.modules.files.domain.entities.files import VaultFile
+from app.modules.files.infrastructure.models.files_models import FileModel
+from app.modules.files.exceptions.files_exceptions import (
+    FileNotFoundError,
+    FileStorageError,
+)
+
+logger = logging.getLogger("app")
 
 
 class FilesDatasourceImpl(FilesDatasource):
     """
-    IMPLEMENTACIÓN MOCK:
-    Ahora incluye el campo 'encrypted_file' con contenido binario simulado.
+    Implementación del datasource de archivos con PostgreSQL.
+    Maneja la persistencia y recuperación de archivos cifrados.
     """
 
     def __init__(self, session: AsyncSession):
         self.session = session
-        self._mock_files = [
-            VaultFile(
-                id="file-101",
-                name="Contrato_Confidencialidad.pdf.vault",
-                owner_id="user-001",
-                owner_name="Daniel Galindo",
-                recipients=["user-002"],
-                created_at=datetime.utcnow(),
-                signer_public_key_base64="MCowBQYDK2VwAyEAG...",
-                encrypted_content=b"CONTENIDO_CIFRADO_MOCK_PDF_01",  # Bytes directos
-            ),
-            VaultFile(
-                id="file-102",
-                name="Plan_Financiero_2026.xlsx.vault",
-                owner_id="user-002",
-                owner_name="Ana Garcia",
-                recipients=["user-001"],
-                created_at=datetime.utcnow(),
-                signer_public_key_base64="MCowBQYDK2VwAyEB...",
-                encrypted_content=b"CONTENIDO_CIFRADO_MOCK_XLSX_02",
-            ),
-        ]
+
+    def _map_to_domain(self, file: FileModel) -> VaultFile:
+        return VaultFile(
+            id=file.id,
+            name=file.name,
+            owner_id=file.owner_id,
+            owner_name=file.owner_name,
+            recipients=file.recipients or [],
+            created_at=file.created_at,
+            signer_public_key_base64=file.signer_public_key_base64,
+            encrypted_content=file.encrypted_content,
+        )
+
+    def _map_to_model(self, file: VaultFile) -> FileModel:
+        return FileModel(
+            id=file.id,
+            name=file.name,
+            owner_id=file.owner_id,
+            owner_name=file.owner_name,
+            recipients=file.recipients or [],
+            created_at=file.created_at,
+            signer_public_key_base64=file.signer_public_key_base64,
+            encrypted_content=file.encrypted_content,
+        )
 
     async def get_all(self, user_id: str) -> List[VaultFile]:
-        return [
-            f
-            for f in self._mock_files
-            if f.owner_id == user_id or user_id in f.recipients
-        ]
+        try:
+            query = select(FileModel).where(
+                or_(
+                    FileModel.owner_id == user_id,
+                    FileModel.recipients.op("@>")(f'["{user_id}"]'),
+                )
+            )
+            result = await self.session.execute(query)
+            files = result.scalars().all()
+            return [self._map_to_domain(f) for f in files]
+        except SQLAlchemyError as e:
+            logger.error(f"Error al obtener archivos para usuario {user_id}: {e}")
+            raise FileStorageError(f"Error al obtener la lista de archivos: {str(e)}")
 
     async def get_by_id(self, file_id: str) -> Optional[VaultFile]:
-        return next((f for f in self._mock_files if f.id == file_id), None)
+        try:
+            query = select(FileModel).where(FileModel.id == file_id)
+            result = await self.session.execute(query)
+            file = result.scalar_one_or_none()
+            if not file:
+                raise FileNotFoundError(file_id)
+            return self._map_to_domain(file)
+        except FileNotFoundError:
+            raise
+        except SQLAlchemyError as e:
+            logger.error(f"Error al obtener archivo {file_id}: {e}")
+            raise FileStorageError(f"Error al obtener el archivo: {str(e)}")
 
     async def save(self, file: VaultFile) -> VaultFile:
-        self._mock_files.append(file)
-        return file
+        try:
+            db_file = self._map_to_model(file)
+            self.session.add(db_file)
+            await self.session.commit()
+            await self.session.refresh(db_file)
+            return self._map_to_domain(db_file)
+        except IntegrityError as e:
+            await self.session.rollback()
+            logger.error(f"Integrity error al guardar archivo {file.name}: {e}")
+            raise FileStorageError(
+                f"Conflicto de integridad al guardar el archivo: {str(e)}"
+            )
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Error al guardar archivo {file.name}: {e}")
+            raise FileStorageError(f"Error al guardar el archivo: {str(e)}")
 
     async def delete(self, file_id: str) -> bool:
-        initial_len = len(self._mock_files)
-        self._mock_files = [f for f in self._mock_files if f.id != file_id]
-        return len(self._mock_files) < initial_len
+        try:
+            query = select(FileModel).where(FileModel.id == file_id)
+            result = await self.session.execute(query)
+            db_file = result.scalar_one_or_none()
+            if not db_file:
+                raise FileNotFoundError(file_id)
+            await self.session.delete(db_file)
+            await self.session.commit()
+            return True
+        except FileNotFoundError:
+            raise
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(f"Error al eliminar archivo {file_id}: {e}")
+            raise FileStorageError(f"Error al eliminar el archivo: {str(e)}")
