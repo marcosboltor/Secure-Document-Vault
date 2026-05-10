@@ -8,6 +8,7 @@ from app.modules.users.exceptions.users_exceptions import (
     InvalidCredentialsError,
 )
 
+
 class RefreshTokenUseCase:
     def __init__(self, repository: UserRepository):
         self.repository = repository

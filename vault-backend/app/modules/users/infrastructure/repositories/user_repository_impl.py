@@ -12,7 +12,6 @@ class UserRepositoryImpl(UserRepository):
     def __init__(self, datasource: UserDatasource):
         self.datasource = datasource
 
-
     @staticmethod
     def _to_domain(model: UserModel) -> User:
         return User(
@@ -34,8 +33,6 @@ class UserRepositoryImpl(UserRepository):
             public_signing_key=user.public_signing_key,
             created_at=user.created_at,
         )
-
-
 
     async def get_by_id(self, user_id: str) -> Optional[User]:
         model = await self.datasource.get_by_id(user_id)

@@ -19,7 +19,9 @@ class LoginUseCase:
     def __init__(self, repository: UserRepository):
         self.repository = repository
 
-    async def execute(self, user_id: str, challenge: str, signature_b64: str) -> tuple[str, str]:
+    async def execute(
+        self, user_id: str, challenge: str, signature_b64: str
+    ) -> tuple[str, str]:
         user = await self.repository.get_by_id(user_id)
         if not user:
             raise UserNotFoundError(user_id)

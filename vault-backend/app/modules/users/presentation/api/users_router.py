@@ -2,10 +2,14 @@ from typing import List
 
 from fastapi import APIRouter, Depends, status
 
-from app.modules.users.application.use_cases.register_user_usecase import RegisterUserUseCase
+from app.modules.users.application.use_cases.register_user_usecase import (
+    RegisterUserUseCase,
+)
 from app.modules.users.application.use_cases.login_usecase import LoginUseCase
 from app.modules.users.application.use_cases.list_users_usecase import ListUsersUseCase
-from app.modules.users.application.use_cases.refresh_token_usecase import RefreshTokenUseCase
+from app.modules.users.application.use_cases.refresh_token_usecase import (
+    RefreshTokenUseCase,
+)
 from app.modules.users.presentation.di.dependencies import (
     get_register_usecase,
     get_login_usecase,
@@ -76,6 +80,7 @@ async def login(
     )
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
+
 @router.post(
     "/refresh",
     response_model=TokenResponse,
@@ -95,6 +100,7 @@ async def refresh_token(
         refresh_token=body.refresh_token,
     )
     return TokenResponse(access_token=new_access_token, refresh_token=new_refresh_token)
+
 
 @router.get(
     "/",

@@ -18,7 +18,9 @@ from app.modules.users.application.use_cases.login_usecase import LoginUseCase
 from app.modules.users.application.use_cases.list_users_usecase import (
     ListUsersUseCase,
 )
-from app.modules.users.application.use_cases.refresh_token_usecase import RefreshTokenUseCase
+from app.modules.users.application.use_cases.refresh_token_usecase import (
+    RefreshTokenUseCase,
+)
 
 _bearer_scheme = HTTPBearer()
 

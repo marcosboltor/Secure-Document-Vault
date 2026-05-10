@@ -7,7 +7,7 @@ from sqlmodel import SQLModel
 
 from app.core.config import settings
 
-from app.modules.users.infrastructure.models.user_models import UserModel 
+from app.modules.users.infrastructure.models.user_models import UserModel  # noqa: F401
 
 # target_metadata contiene el esquema completo tras los imports anteriores
 target_metadata = SQLModel.metadata
