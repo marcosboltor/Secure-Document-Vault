@@ -50,19 +50,13 @@ class ECCKeyWrapper:
         required_fields = ("ephemeral_pub", "nonce", "encrypted_key")
         for field in required_fields:
             if field not in wrapped_data:
-                raise ValueError(
-                    f"Entrada de destinatario invalida: falta '{field}'."
-                )
+                raise ValueError(f"Entrada de destinatario invalida: falta '{field}'.")
             if not isinstance(wrapped_data[field], str):
-                raise ValueError(
-                    f"Campo '{field}' debe ser una cadena hexadecimal."
-                )
+                raise ValueError(f"Campo '{field}' debe ser una cadena hexadecimal.")
             try:
                 bytes.fromhex(wrapped_data[field])
             except ValueError:
-                raise ValueError(
-                    f"Campo '{field}' contiene datos no hexadecimales."
-                )
+                raise ValueError(f"Campo '{field}' contiene datos no hexadecimales.")
 
         ephemeral_pub_bytes = bytes.fromhex(wrapped_data["ephemeral_pub"])
         if len(ephemeral_pub_bytes) != 32:
@@ -74,8 +68,7 @@ class ECCKeyWrapper:
         nonce_bytes = bytes.fromhex(wrapped_data["nonce"])
         if len(nonce_bytes) != 12:
             raise ValueError(
-                f"nonce invalido: esperados 12 bytes, "
-                f"recibidos {len(nonce_bytes)}."
+                f"nonce invalido: esperados 12 bytes, " f"recibidos {len(nonce_bytes)}."
             )
 
         ephemeral_public_key = x25519.X25519PublicKey.from_public_bytes(
