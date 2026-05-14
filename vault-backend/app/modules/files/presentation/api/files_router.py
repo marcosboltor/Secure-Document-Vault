@@ -23,18 +23,18 @@ from app.modules.files.presentation.di.dependencies import (
     upload_file_usecase,
     delete_file_usecase,
 )
+from app.modules.users.presentation.di.dependencies import get_current_user_id
 
 router = APIRouter()
 
-
 @router.get("/", response_model=List[FileListResponse])
 async def list_files(
-    user_id: str = Header(..., description="ID del usuario para simular sesión"),
+    user_id: str = Depends(get_current_user_id),
     use_case: GetFilesUseCase = Depends(get_files_usecase),
 ):
     """
     Endpoint para listar todos los archivos accesibles por el usuario.
-    Para pruebas, se debe enviar el header 'user-id' (ej: 'user-001').
+    Protegido por JWT.
     """
     files = await use_case.execute(user_id)
     return files
@@ -43,13 +43,13 @@ async def list_files(
 @router.get("/{file_id}", response_model=FileDetailResponse)
 async def get_file_details(
     file_id: str = Path(..., description="ID del archivo"),
-    user_id: str = Header(..., description="ID del usuario para simular sesión"),
+    user_id: str = Depends(get_current_user_id),
     use_case: GetFileDetailsUseCase = Depends(get_file_details_usecase),
 ):
     """
     Endpoint para obtener los detalles de un archivo por su ID.
     Verifica que el usuario tenga acceso (propietario o destinatario).
-    Para pruebas, se debe enviar el header 'user-id' (ej: 'user-001').
+    Protegido por JWT.
     """
     file = await use_case.execute(file_id, user_id)
 
@@ -72,17 +72,21 @@ async def get_file_details(
 @router.post("/", response_model=FileListResponse, status_code=201)
 async def upload_file(
     request: FileUploadRequest,
+    user_id: str = Depends(get_current_user_id),
     use_case: UploadFileUseCase = Depends(upload_file_usecase),
 ):
     """
     Endpoint para subir un nuevo archivo al vault.
     El campo encrypted_content debe enviarse como cadena codificada en base64.
+    Protegido por JWT.
     """
     # Decodificar el contenido base64 a bytes
     encrypted_bytes = base64.b64decode(request.encrypted_content)
 
     # Extraer metadatos excluyendo ciphertext
     metadata = request.model_dump(exclude={"encrypted_content"})
+    # Asegurar que el dueño es el usuario autenticado
+    metadata["owner_id"] = user_id
 
     saved_file = await use_case.execute(metadata=metadata, binary_blob=encrypted_bytes)
 
@@ -106,13 +110,13 @@ async def upload_file(
 @router.delete("/{file_id}", response_model=DeleteResponse)
 async def delete_file(
     file_id: str = Path(..., description="ID del archivo"),
-    user_id: str = Header(..., description="ID del usuario para simular sesión"),
+    user_id: str = Depends(get_current_user_id),
     use_case: DeleteFileUseCase = Depends(delete_file_usecase),
 ):
     """
     Endpoint para eliminar un archivo del vault.
     Solo el propietario (owner_id) puede eliminar el archivo.
-    Para pruebas, se debe enviar el header 'user-id' (ej: 'user-001').
+    Protegido por JWT.
     """
     await use_case.execute(file_id, user_id)
     return DeleteResponse(
