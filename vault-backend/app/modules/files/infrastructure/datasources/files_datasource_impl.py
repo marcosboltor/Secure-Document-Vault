@@ -2,7 +2,8 @@ import logging
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, cast
+from sqlalchemy.dialects.postgresql import JSONB
 from app.modules.files.domain.datasources.files_datasource import FilesDatasource
 from app.modules.files.domain.entities.files import VaultFile
 from app.modules.files.infrastructure.models.files_models import FileModel
@@ -52,7 +53,7 @@ class FilesDatasourceImpl(FilesDatasource):
             query = select(FileModel).where(
                 or_(
                     FileModel.owner_id == user_id,
-                    FileModel.recipients.op("@>")(f'["{user_id}"]'),
+                    cast(FileModel.recipients, JSONB).op("@>")(cast(f'["{user_id}"]', JSONB)),
                 )
             )
             result = await self.session.execute(query)

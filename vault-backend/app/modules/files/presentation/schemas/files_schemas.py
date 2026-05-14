@@ -42,10 +42,7 @@ class FileUploadRequest(BaseModel):
     """Esquema para la solicitud de subida de archivo."""
 
     name: str
-    owner_id: str
-    owner_name: str
     recipients: List[str] = []
-    signer_public_key_base64: str
     encrypted_content: str  # Contenido cifrado codificado en base64
 
 

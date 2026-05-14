@@ -23,7 +23,8 @@ from app.modules.files.presentation.di.dependencies import (
     upload_file_usecase,
     delete_file_usecase,
 )
-from app.modules.users.presentation.di.dependencies import get_current_user_id
+from app.modules.users.presentation.di.dependencies import get_current_user_id, get_current_user
+from app.modules.users.domain.entities.user import User
 
 router = APIRouter()
 
@@ -72,7 +73,7 @@ async def get_file_details(
 @router.post("/", response_model=FileListResponse, status_code=201)
 async def upload_file(
     request: FileUploadRequest,
-    user_id: str = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
     use_case: UploadFileUseCase = Depends(upload_file_usecase),
 ):
     """
@@ -85,8 +86,10 @@ async def upload_file(
 
     # Extraer metadatos excluyendo ciphertext
     metadata = request.model_dump(exclude={"encrypted_content"})
-    # Asegurar que el dueño es el usuario autenticado
-    metadata["owner_id"] = user_id
+    # Asignar datos del usuario autenticado automáticamente
+    metadata["owner_id"] = current_user.id
+    metadata["owner_name"] = current_user.username
+    metadata["signer_public_key_base64"] = current_user.public_signing_key
 
     saved_file = await use_case.execute(metadata=metadata, binary_blob=encrypted_bytes)
 

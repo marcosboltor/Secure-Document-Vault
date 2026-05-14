@@ -91,3 +91,16 @@ async def get_current_user_id(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido.",
         )
+
+
+async def get_current_user(
+    user_id: str = Depends(get_current_user_id),
+    repository: UserRepositoryImpl = Depends(get_user_repository)
+):
+    user = await repository.get_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="El usuario autenticado ya no existe.",
+        )
+    return user
