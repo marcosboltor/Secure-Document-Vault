@@ -95,7 +95,7 @@ async def get_current_user_id(
 
 async def get_current_user(
     user_id: str = Depends(get_current_user_id),
-    repository: UserRepositoryImpl = Depends(get_user_repository)
+    repository: UserRepositoryImpl = Depends(get_user_repository),
 ):
     user = await repository.get_by_id(user_id)
     if not user:

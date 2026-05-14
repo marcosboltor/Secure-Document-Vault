@@ -53,7 +53,9 @@ class FilesDatasourceImpl(FilesDatasource):
             query = select(FileModel).where(
                 or_(
                     FileModel.owner_id == user_id,
-                    cast(FileModel.recipients, JSONB).op("@>")(cast(f'["{user_id}"]', JSONB)),
+                    cast(FileModel.recipients, JSONB).op("@>")(
+                        cast(f'["{user_id}"]', JSONB)
+                    ),
                 )
             )
             result = await self.session.execute(query)

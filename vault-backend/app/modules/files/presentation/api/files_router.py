@@ -1,6 +1,6 @@
 import base64
 from typing import List
-from fastapi import APIRouter, Depends, Header, Path
+from fastapi import APIRouter, Depends, Path
 from app.modules.files.presentation.schemas.files_schemas import (
     FileListResponse,
     FileDetailResponse,
@@ -23,10 +23,14 @@ from app.modules.files.presentation.di.dependencies import (
     upload_file_usecase,
     delete_file_usecase,
 )
-from app.modules.users.presentation.di.dependencies import get_current_user_id, get_current_user
+from app.modules.users.presentation.di.dependencies import (
+    get_current_user_id,
+    get_current_user,
+)
 from app.modules.users.domain.entities.user import User
 
 router = APIRouter()
+
 
 @router.get("/", response_model=List[FileListResponse])
 async def list_files(
