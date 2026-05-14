@@ -116,7 +116,7 @@ class VaultBuilder:
         aad_metadatos = vault_bytes[inicio_aad:fin_aad]
 
         # Leer los últimos 68 bytes candidatos, validar SigLen
-        sig_len_raw = vault_bytes[-(64 + 4):-(64)]
+        sig_len_raw = vault_bytes[-(64 + 4) : -(64)]
         sig_len = struct.unpack("<I", sig_len_raw)[0]
 
         if sig_len != 64:
@@ -126,7 +126,7 @@ class VaultBuilder:
             )
 
         pos_sig_len = len(vault_bytes) - sig_len - 4
-        signature = vault_bytes[pos_sig_len + 4:]
+        signature = vault_bytes[pos_sig_len + 4 :]
         ciphertext_con_tag = vault_bytes[fin_aad:pos_sig_len]
 
         return nonce, aad_metadatos, ciphertext_con_tag, signature
