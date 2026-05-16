@@ -30,29 +30,35 @@ async function initPyodide() {
     from cryptography.hazmat.primitives import serialization
     import base64
 
-    def js_encriptar(file_bytes, name, recipients_json, signer_id, signer_key_b64):
-        signer_key = ed25519.Ed25519PrivateKey.from_private_bytes(base64.b64decode(signer_key_b64))
+    def js_encriptar(file_bytes, name, recipients_json, signer_id, signer_key_pem):
+        signer_key = serialization.load_pem_private_key(signer_key_pem.encode(), password=None)
         
         # Convert JS proxy to Python list of dicts
         recipients_list = recipients_json.to_py()
         
         recipients = []
         for r in recipients_list:
-            pub_bytes = base64.b64decode(r['publicKeyBase64'])
+            # Check if key is available, if not handle accordingly. Assume it's a PEM string.
+            pub_pem = r['publicKeyPem']
             recipients.append({
                 "id": r['id'],
-                "public_key": x25519.X25519PublicKey.from_public_bytes(pub_bytes)
+                "public_key": serialization.load_pem_public_key(pub_pem.encode())
             })
             
         result = encriptar(file_bytes.to_bytes(), name, recipients, signer_id, signer_key)
         return result
 
-    def js_desencriptar(vault_bytes, user_id, user_key_b64, signer_pub_b64):
-        user_key = x25519.X25519PrivateKey.from_private_bytes(base64.b64decode(user_key_b64))
-        signer_pub = ed25519.Ed25519PublicKey.from_public_bytes(base64.b64decode(signer_pub_b64))
+    def js_desencriptar(vault_bytes, user_id, user_key_pem, signer_pub_pem):
+        user_key = serialization.load_pem_private_key(user_key_pem.encode(), password=None)
+        signer_pub = serialization.load_pem_public_key(signer_pub_pem.encode())
         
         result = desencriptar(vault_bytes.to_bytes(), user_id, user_key, signer_pub)
         return result
+
+    def js_sign_challenge(challenge_str, private_key_pem):
+        priv_key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
+        signature = priv_key.sign(challenge_str.encode())
+        return base64.b64encode(signature).decode()
 
     def js_generar_identidad():
         # Generar par de cifrado (X25519)
@@ -65,26 +71,26 @@ async function initPyodide() {
         
         return {
             "encryption": {
-                "private": base64.b64encode(priv_x.private_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PrivateFormat.Raw,
+                "private": priv_x.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.PKCS8,
                     encryption_algorithm=serialization.NoEncryption()
-                )).decode(),
-                "public": base64.b64encode(pub_x.public_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PublicFormat.Raw
-                )).decode()
+                ).decode(),
+                "public": pub_x.public_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo
+                ).decode()
             },
             "signing": {
-                "private": base64.b64encode(priv_ed.private_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PrivateFormat.Raw,
+                "private": priv_ed.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.PKCS8,
                     encryption_algorithm=serialization.NoEncryption()
-                )).decode(),
-                "public": base64.b64encode(pub_ed.public_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PublicFormat.Raw
-                )).decode()
+                ).decode(),
+                "public": pub_ed.public_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo
+                ).decode()
             }
         }
   `);
@@ -101,18 +107,22 @@ self.onmessage = async (e: MessageEvent) => {
     if (type === "INIT") {
       self.postMessage({ id, type: "READY" });
     } else if (type === "ENCRYPT") {
-      const { file, fileName, recipients, signerId, signerPrivateKeyBase64 } = payload;
-      const result = py.runPython("js_encriptar")(file, fileName, recipients, signerId, signerPrivateKeyBase64);
+      const { file, fileName, recipients, signerId, signerPrivateKeyPem } = payload;
+      const result = py.runPython("js_encriptar")(file, fileName, recipients, signerId, signerPrivateKeyPem);
       const output = result.toJs();
       self.postMessage({ id, type: "RESULT", payload: output }, [output.buffer]);
     } else if (type === "DECRYPT") {
-      const { vaultFile, userId, userPrivateKeyBase64, signerPublicKeyBase64 } = payload;
-      const result = py.runPython("js_desencriptar")(vaultFile, userId, userPrivateKeyBase64, signerPublicKeyBase64);
+      const { vaultFile, userId, userPrivateKeyPem, signerPublicKeyPem } = payload;
+      const result = py.runPython("js_desencriptar")(vaultFile, userId, userPrivateKeyPem, signerPublicKeyPem);
       const output = result.toJs();
       self.postMessage({ id, type: "RESULT", payload: output }, [output.buffer]);
     } else if (type === "GENERATE_IDENTITY") {
       const result = py.runPython("js_generar_identidad")();
       self.postMessage({ id, type: "RESULT", payload: result.toJs() });
+    } else if (type === "SIGN_CHALLENGE") {
+      const { challenge, privateKeyPem } = payload;
+      const result = py.runPython("js_sign_challenge")(challenge, privateKeyPem);
+      self.postMessage({ id, type: "RESULT", payload: result });
     }
   } catch (error: any) {
     self.postMessage({ id, type: "ERROR", error: error.message });
