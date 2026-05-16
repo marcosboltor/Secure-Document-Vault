@@ -13,6 +13,6 @@ class GetFilesUseCase:
         self.repository = repository
 
     async def execute(self, user_id: str) -> List[VaultFile]:
-        # TODO: Implementar de forma correcta
+        # Traer usuario , verificar acceso y despues regresar el archivo
         files = await self.repository.get_files(user_id)
         return files

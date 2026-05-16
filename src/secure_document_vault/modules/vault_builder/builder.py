@@ -115,18 +115,17 @@ class VaultBuilder:
         fin_aad = 24 + longitud_metadatos
         aad_metadatos = vault_bytes[inicio_aad:fin_aad]
 
-        # Leemos SigLen desde el final: los últimos N bytes son la firma,
-        # y los 4 bytes anteriores son SigLen.
-        # Para encontrar SigLen, necesitamos saber dónde termina el ciphertext.
-        # Estrategia: leemos los 4 bytes de SigLen que están justo antes de
-        # la firma. Pero no sabemos el tamaño de la firma aún.
-        # Solución: iteramos desde fin_aad. Después del ciphertext viene
-        # SigLen(4) + Signature(SigLen).
-        # Como la firma Ed25519 es siempre 64 bytes, verificamos consistencia.
-        # Pero para ser genéricos, leemos SigLen primero probando desde el final.
+        # Leer los últimos 68 bytes candidatos, validar SigLen
+        sig_len_raw = vault_bytes[-(64 + 4) : -(64)]
+        sig_len = struct.unpack("<I", sig_len_raw)[0]
 
-        # Los últimos 4+64 bytes: SigLen(4) + Signature(64)
-        pos_sig_len = len(vault_bytes) - 64 - 4
+        if sig_len != 64:
+            raise ValueError(
+                f"Longitud de firma inesperada: {sig_len}."
+                f"Se esperaban 64 bytes (Ed25519)."
+            )
+
+        pos_sig_len = len(vault_bytes) - sig_len - 4
         signature = vault_bytes[pos_sig_len + 4 :]
         ciphertext_con_tag = vault_bytes[fin_aad:pos_sig_len]
 
