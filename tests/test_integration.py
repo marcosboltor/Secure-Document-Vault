@@ -2,6 +2,7 @@ import json
 import struct
 import pytest
 from cryptography.hazmat.primitives.asymmetric import x25519, ed25519
+from secure_document_vault.modules.key_store.generator import KeyProtector
 from secure_document_vault.core.facade import encriptar, desencriptar
 from secure_document_vault.core.exceptions import IntegrityErrorException
 
@@ -16,9 +17,10 @@ def create_user(user_id):
     e_priv = ed25519.Ed25519PrivateKey.generate()
     return {
         "id": user_id,
-        "private_key": x_priv,
+        "password": "password123",
+        "private_key": KeyProtector.protect_key("password123", x_priv, user_id),
         "public_key": x_priv.public_key(),
-        "signing_private_key": e_priv,
+        "signing_private_key": KeyProtector.protect_key("password123", e_priv, user_id),
         "signing_public_key": e_priv.public_key(),
     }
 
@@ -35,12 +37,21 @@ def test_multiple_recipients_all_can_decrypt():
     plaintext = b"Document shared with 5 users"
 
     vault = encriptar(
-        plaintext, "group.txt", users, users[0]["id"], users[0]["signing_private_key"]
+        plaintext,
+        "group.txt",
+        users,
+        users[0]["id"],
+        users[0]["signing_private_key"],
+        users[0]["password"],
     )
 
     for user in users:
         recovered = desencriptar(
-            vault, user["id"], user["private_key"], users[0]["signing_public_key"]
+            vault,
+            user["id"],
+            user["private_key"],
+            user["password"],
+            users[0]["signing_public_key"],
         )
         assert recovered == plaintext
 
@@ -52,7 +63,12 @@ def test_multiple_recipients_non_member_cannot_decrypt():
     plaintext = b"Group only content"
 
     vault = encriptar(
-        plaintext, "private.txt", users, users[0]["id"], users[0]["signing_private_key"]
+        plaintext,
+        "private.txt",
+        users,
+        users[0]["id"],
+        users[0]["signing_private_key"],
+        users[0]["password"],
     )
 
     with pytest.raises(IntegrityErrorException, match="no autorizado"):
@@ -60,6 +76,7 @@ def test_multiple_recipients_non_member_cannot_decrypt():
             vault,
             outsider["id"],
             outsider["private_key"],
+            outsider["password"],
             users[0]["signing_public_key"],
         )
 
@@ -76,10 +93,19 @@ def test_encrypt_decrypt_empty_file():
     plaintext = b""
 
     vault = encriptar(
-        plaintext, "empty.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "empty.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
     recovered = desencriptar(
-        vault, "alice", alice["private_key"], alice["signing_public_key"]
+        vault,
+        "alice",
+        alice["private_key"],
+        alice["password"],
+        alice["signing_public_key"],
     )
 
     assert recovered == plaintext
@@ -100,10 +126,19 @@ def test_encrypt_decrypt_binary_content():
     plaintext = b"%PDF-1.4\x00\x01\x02\x03" + bytes(range(256)) * 4
 
     vault = encriptar(
-        plaintext, "document.pdf", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "document.pdf",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
     recovered = desencriptar(
-        vault, "alice", alice["private_key"], alice["signing_public_key"]
+        vault,
+        "alice",
+        alice["private_key"],
+        alice["password"],
+        alice["signing_public_key"],
     )
 
     assert recovered == plaintext
@@ -115,10 +150,19 @@ def test_encrypt_decrypt_binary_with_null_bytes():
     plaintext = b"\x00" * 100 + b"\xff" * 100 + b"\x00\xff" * 50
 
     vault = encriptar(
-        plaintext, "binary.bin", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "binary.bin",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
     recovered = desencriptar(
-        vault, "alice", alice["private_key"], alice["signing_public_key"]
+        vault,
+        "alice",
+        alice["private_key"],
+        alice["password"],
+        alice["signing_public_key"],
     )
 
     assert recovered == plaintext
@@ -136,10 +180,19 @@ def test_encrypt_decrypt_large_file():
     plaintext = b"A" * (1024 * 1024)  # 1 MB
 
     vault = encriptar(
-        plaintext, "large_file.dat", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "large_file.dat",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
     recovered = desencriptar(
-        vault, "alice", alice["private_key"], alice["signing_public_key"]
+        vault,
+        "alice",
+        alice["private_key"],
+        alice["password"],
+        alice["signing_public_key"],
     )
 
     assert recovered == plaintext
@@ -158,10 +211,19 @@ def test_single_recipient_encrypt_decrypt():
     plaintext = b"Only for Alice"
 
     vault = encriptar(
-        plaintext, "alice_only.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "alice_only.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
     recovered = desencriptar(
-        vault, "alice", alice["private_key"], alice["signing_public_key"]
+        vault,
+        "alice",
+        alice["private_key"],
+        alice["password"],
+        alice["signing_public_key"],
     )
 
     assert recovered == plaintext
@@ -174,11 +236,22 @@ def test_single_recipient_another_user_rejected():
     plaintext = b"Only for Alice"
 
     vault = encriptar(
-        plaintext, "alice_only.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "alice_only.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     with pytest.raises(IntegrityErrorException, match="no autorizado"):
-        desencriptar(vault, bob["id"], bob["private_key"], alice["signing_public_key"])
+        desencriptar(
+            vault,
+            bob["id"],
+            bob["private_key"],
+            bob["password"],
+            alice["signing_public_key"],
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -199,17 +272,28 @@ def test_vault_is_reusable_multiple_decryptions():
         [alice, bob],
         alice["id"],
         alice["signing_private_key"],
+        alice["password"],
     )
 
     for _ in range(3):
         assert (
             desencriptar(
-                vault, "alice", alice["private_key"], alice["signing_public_key"]
+                vault,
+                "alice",
+                alice["private_key"],
+                alice["password"],
+                alice["signing_public_key"],
             )
             == plaintext
         )
         assert (
-            desencriptar(vault, "bob", bob["private_key"], alice["signing_public_key"])
+            desencriptar(
+                vault,
+                "bob",
+                bob["private_key"],
+                bob["password"],
+                alice["signing_public_key"],
+            )
             == plaintext
         )
 
@@ -226,7 +310,12 @@ def test_vault_metadata_contains_filename():
     filename = "confidential_contract.pdf"
 
     vault = encriptar(
-        b"Content", filename, [alice], alice["id"], alice["signing_private_key"]
+        b"Content",
+        filename,
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     # Manually parse the vault to read the AAD (JSON metadata)
@@ -246,7 +335,12 @@ def test_vault_metadata_contains_all_recipient_ids():
     recipients = [alice, bob, carol]
 
     vault = encriptar(
-        b"Data", "multi.txt", recipients, alice["id"], alice["signing_private_key"]
+        b"Data",
+        "multi.txt",
+        recipients,
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     meta_len = struct.unpack("<I", vault[20:24])[0]
@@ -261,7 +355,12 @@ def test_vault_metadata_algorithm_field():
     """The algorithm field in the metadata indicates ChaCha20-Poly1305."""
     alice = create_user("alice")
     vault = encriptar(
-        b"Test", "test.txt", [alice], alice["id"], alice["signing_private_key"]
+        b"Test",
+        "test.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     meta_len = struct.unpack("<I", vault[20:24])[0]
@@ -283,20 +382,42 @@ def test_two_encryptions_of_same_plaintext_differ():
     plaintext = b"Same content"
 
     vault1 = encriptar(
-        plaintext, "file.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "file.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
     vault2 = encriptar(
-        plaintext, "file.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "file.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     assert vault1 != vault2
     # Both can still be decrypted correctly
     assert (
-        desencriptar(vault1, "alice", alice["private_key"], alice["signing_public_key"])
+        desencriptar(
+            vault1,
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
+        )
         == plaintext
     )
     assert (
-        desencriptar(vault2, "alice", alice["private_key"], alice["signing_public_key"])
+        desencriptar(
+            vault2,
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
+        )
         == plaintext
     )
 
@@ -314,7 +435,11 @@ def test_invalid_header_raises_value_error():
 
     with pytest.raises(ValueError, match="Header incorrecto"):
         desencriptar(
-            fake_vault, "alice", alice["private_key"], alice["signing_public_key"]
+            fake_vault,
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
 
 
@@ -323,7 +448,13 @@ def test_empty_bytes_raises_error():
     alice = create_user("alice")
 
     with pytest.raises(Exception):
-        desencriptar(b"", "alice", alice["private_key"], alice["signing_public_key"])
+        desencriptar(
+            b"",
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
+        )
 
 
 def test_random_bytes_not_valid_vault():
@@ -335,7 +466,11 @@ def test_random_bytes_not_valid_vault():
 
     with pytest.raises(Exception):
         desencriptar(
-            garbage, "alice", alice["private_key"], alice["signing_public_key"]
+            garbage,
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
 
 
@@ -350,7 +485,12 @@ def test_tampered_wrapped_key_fails():
     alice = create_user("alice")
     plaintext = b"Protected data"
     vault = encriptar(
-        plaintext, "doc.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "doc.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     # The AAD is pure ASCII JSON (hex strings). We locate the "encrypted_key"
@@ -374,7 +514,11 @@ def test_tampered_wrapped_key_fails():
 
     with pytest.raises(IntegrityErrorException):
         desencriptar(
-            bytes(corrupted), "alice", alice["private_key"], alice["signing_public_key"]
+            bytes(corrupted),
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
 
 
@@ -390,7 +534,12 @@ def test_each_recipient_has_unique_wrapped_key():
     bob = create_user("bob")
 
     vault = encriptar(
-        b"Shared", "shared.txt", [alice, bob], alice["id"], alice["signing_private_key"]
+        b"Shared",
+        "shared.txt",
+        [alice, bob],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     meta_len = struct.unpack("<I", vault[20:24])[0]
@@ -435,10 +584,19 @@ def test_encrypt_decrypt_special_filename(nombre):
     plaintext = b"File content"
 
     vault = encriptar(
-        plaintext, nombre, [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        nombre,
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
     recovered = desencriptar(
-        vault, "alice", alice["private_key"], alice["signing_public_key"]
+        vault,
+        "alice",
+        alice["private_key"],
+        alice["password"],
+        alice["signing_public_key"],
     )
 
     assert recovered == plaintext
@@ -471,15 +629,32 @@ def test_end_to_end_file_types(nombre, contenido):
     bob = create_user("bob")
 
     vault = encriptar(
-        contenido, nombre, [alice, bob], alice["id"], alice["signing_private_key"]
+        contenido,
+        nombre,
+        [alice, bob],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     assert (
-        desencriptar(vault, "alice", alice["private_key"], alice["signing_public_key"])
+        desencriptar(
+            vault,
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
+        )
         == contenido
     )
     assert (
-        desencriptar(vault, "bob", bob["private_key"], alice["signing_public_key"])
+        desencriptar(
+            vault,
+            "bob",
+            bob["private_key"],
+            bob["password"],
+            alice["signing_public_key"],
+        )
         == contenido
     )
 
@@ -500,7 +675,12 @@ def test_removing_recipient_entry_breaks_access():
     plaintext = b"Shared document"
 
     vault = encriptar(
-        plaintext, "shared.txt", [alice, bob], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "shared.txt",
+        [alice, bob],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     # Parse the vault and extract its components
@@ -524,13 +704,21 @@ def test_removing_recipient_entry_breaks_access():
     # Because we tampered with the AAD, the signature check fails first.
     with pytest.raises(IntegrityErrorException, match="Firma digital"):
         desencriptar(
-            tampered_vault, "bob", bob["private_key"], alice["signing_public_key"]
+            tampered_vault,
+            "bob",
+            bob["private_key"],
+            bob["password"],
+            alice["signing_public_key"],
         )
 
     # Alice cannot decrypt either: the AAD changed so the AEAD tag no longer matches
     with pytest.raises(IntegrityErrorException):
         desencriptar(
-            tampered_vault, "alice", alice["private_key"], alice["signing_public_key"]
+            tampered_vault,
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
 
 
@@ -546,11 +734,20 @@ def test_security_valid_signature_accepted():
     plaintext = b"Valid signed content"
 
     vault = encriptar(
-        plaintext, "secure.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "secure.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     recovered = desencriptar(
-        vault, "alice", alice["private_key"], alice["signing_public_key"]
+        vault,
+        "alice",
+        alice["private_key"],
+        alice["password"],
+        alice["signing_public_key"],
     )
     assert recovered == plaintext
 
@@ -560,7 +757,12 @@ def test_security_modified_ciphertext_rejected():
     alice = create_user("alice")
     plaintext = b"Sensitive data"
     vault = encriptar(
-        plaintext, "data.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "data.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     # Locate ciphertext position (after header, nonce, metalen, metadata)
@@ -573,7 +775,11 @@ def test_security_modified_ciphertext_rejected():
 
     with pytest.raises(IntegrityErrorException, match="Firma digital inválida"):
         desencriptar(
-            bytes(tampered), "alice", alice["private_key"], alice["signing_public_key"]
+            bytes(tampered),
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
 
 
@@ -582,7 +788,12 @@ def test_security_modified_metadata_rejected():
     alice = create_user("alice")
     plaintext = b"Important info"
     vault = encriptar(
-        plaintext, "info.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "info.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     # AAD metadata starts at byte 24
@@ -591,7 +802,11 @@ def test_security_modified_metadata_rejected():
 
     with pytest.raises(IntegrityErrorException, match="Firma digital inválida"):
         desencriptar(
-            bytes(tampered), "alice", alice["private_key"], alice["signing_public_key"]
+            bytes(tampered),
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
 
 
@@ -602,13 +817,22 @@ def test_security_wrong_public_key_rejected():
     plaintext = b"Top secret"
 
     vault = encriptar(
-        plaintext, "secret.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "secret.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     # Decrypting with Mallory's public key instead of Alice's
     with pytest.raises(IntegrityErrorException, match="Firma digital inválida"):
         desencriptar(
-            vault, "alice", alice["private_key"], mallory["signing_public_key"]
+            vault,
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            mallory["signing_public_key"],
         )
 
 
@@ -617,7 +841,12 @@ def test_security_signature_removed_rejected():
     alice = create_user("alice")
     plaintext = b"Signed data"
     vault = encriptar(
-        plaintext, "signed.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "signed.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     # Revert header to VAULT10 (format v1)
@@ -626,5 +855,9 @@ def test_security_signature_removed_rejected():
 
     with pytest.raises(IntegrityErrorException, match="no contiene una firma digital"):
         desencriptar(
-            bytes(tampered), "alice", alice["private_key"], alice["signing_public_key"]
+            bytes(tampered),
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
