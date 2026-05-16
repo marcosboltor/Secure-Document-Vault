@@ -2,9 +2,11 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Fingerprint, Lock, Upload, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react";
+import { ArrowRight, Fingerprint, Lock, Upload, CheckCircle2, ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import styles from "./page.module.css";
+import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
+import { authRepository } from "@/infrastructure/repositories/api-auth.repository";
 
 export default function Home() {
   const router = useRouter();
@@ -12,6 +14,7 @@ export default function Home() {
   
   const [identity, setIdentity] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,29 +37,50 @@ export default function Home() {
     reader.readAsText(file);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identity) {
       setError("Please upload your identity file to initialize session.");
       return;
     }
     
-    // In a real app, we would store this in a secure context/store
-    // For the demo, we'll store the name in localStorage to show the user is "logged in"
-    localStorage.setItem("vault_user", JSON.stringify({
-      id: identity.institutionalId || "USER-1",
-      name: identity.name,
-      email: identity.email,
-      publicKeys: {
-        encryption: identity.identity.encryption.public,
-        signing: identity.identity.signing.public
-      }
-    }));
-    
-    // Also store private keys in session (DO NOT do this in production, use a secure state manager)
-    sessionStorage.setItem("vault_private_keys", JSON.stringify(identity.identity));
-    
-    router.push("/files");
+    setIsLoading(true);
+    setError(null);
+    try {
+      const challenge = crypto.randomUUID();
+      const privateKeyPem = identity.identity.signing.private;
+      
+      const signature = await vaultRepository.signChallenge(challenge, privateKeyPem);
+      
+      const tokens = await authRepository.loginUser({
+        user_id: identity.institutionalId,
+        challenge,
+        signature
+      });
+
+      // Store tokens in cookies
+      document.cookie = `access_token=${tokens.access_token}; path=/; max-age=3600; samesite=strict`;
+      document.cookie = `refresh_token=${tokens.refresh_token}; path=/; max-age=86400; samesite=strict`;
+
+      localStorage.setItem("vault_user", JSON.stringify({
+        id: identity.institutionalId,
+        name: identity.name,
+        email: identity.email,
+        publicKeys: {
+          encryption: identity.identity.encryption.public,
+          signing: identity.identity.signing.public
+        }
+      }));
+      
+      sessionStorage.setItem("vault_private_keys", JSON.stringify(identity.identity));
+      
+      router.push("/files");
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      setError("Authentication failed: " + (err.message || "Invalid identity core."));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -115,8 +139,10 @@ export default function Home() {
             </div>
           )}
 
-          <button type="submit" className={styles.primaryButton} disabled={!identity}>
-            {identity ? (
+          <button type="submit" className={styles.primaryButton} disabled={!identity || isLoading}>
+            {isLoading ? (
+              <><Loader2 className={styles.spinner || "spinner"} size={18} /> AUTHENTICATING...</>
+            ) : identity ? (
               <><ShieldCheck size={18} /> INITIALIZE ACCESS <ArrowRight size={18} /></>
             ) : (
               "UPLOAD CORE TO START"
