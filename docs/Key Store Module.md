@@ -60,19 +60,52 @@ Si el usuario se entera que su dispositivo fue robado o su contraseña expuesta,
 - **Acción del Backend:** La base de datos actualiza el estado de la llave pública comprometida a `REVOKED` (Revocada). 
 - **Aislamiento:** Desde ese momento, el backend rechaza cualquier petición que provenga de dicha identidad para descargar archivos `.vault`, mitigando la exfiltración de datos. Además, de advertir a sus contactos del usuario que las firmas asociadas a esa llave ya no son confiables.
 
-# Security assumptions
-El modelo de amenazas de este módulo se basa en las siguientes suposiciones:
+# Security Assumptions (Supuestos de Seguridad)
+El modelo de amenazas de este módulo se basa en los siguientes supuestos:
 
-- **Entropía de la contraseña**: El usuario elige una contraseña lo suficientemente fuerte como para resistir ataques de diccionario (frases o patrones comunes).
-- **Integridad del cliente**: El dispositivo donde el usuario introduce su contraseña y descifra la llave en la memoria RAM está libre de malware, keyloggers o acceso no autorizado.
-- **Resguardo físico**: El usuario almacena su llave (frase) de recuperación o su archivo de backup de forma segura y fuera del alcance de terceros.
+- **Entropía de la contraseña**: El usuario elige una contraseña robusta (alta entropía) que no pueda ser adivinada mediante ataques sencillos de diccionario.
+- **Integridad del cliente**: El dispositivo físico donde el usuario ejecuta el software y descifra su llave privada en la memoria RAM está libre de troyanos, keyloggers, spywares o acceso remoto no autorizado.
+- **Almacenamiento del Backup**: El usuario resguarda sus archivos de respaldo (`.keystore`) y su frase de recuperación de 12 palabras de forma segura y separada del entorno de producción habitual.
 
-# Security Discussion
-## Why encrypt private keys?
-Uno de los eslabones más débiles de un sistema criptográfico es el almacenamiento de las llaves. Si la base de datos es vulnerada o un disco duro es robado, el cifrado garantiza que las llaves privadas (y todos los archivos del Vault) permanezcan confidenciales. Un atacante que obtenga el Keystore solo poseerá "ruido" incomprensible sin el secreto (contraseña) del usuario. 
+# Threat Model Alignment & Security Discussion (Alineación con el Modelo de Amenazas y Discusión de Seguridad)
 
-## What happens if the password is weak?
-Si la contraseña es débil (ej. "123456"), un atacante que robe o tenga acceso al Keystore puede realizar un ataque de fuerza bruta offline. A pesar de que las 600,000 iteraciones de PBKDF2 hacen que cada intento sea computacionalmente costoso, una contraseña con baja entropía (aleatoreidad) terminará siendo vulnerada. El sistema no puede proteger al usuario de sus propias malas prácticas de creación de contraseñas.
+Para cumplir formalmente con las directrices del entregable D6, detallamos a continuación las respuestas a las interrogantes de seguridad críticas:
 
-## System Limitations
-Debido a la arquitectura de "Zero-Knowledge", el servidor es ciego, es decir, el sistema no puede ofrecer una funcionalidad tradicional de "Olvidé mi contraseña" por correo electrónico. Si un usuario olvida su contraseña y también pierde su frase de recuperación, sus documentos quedarán cifrados e inaccesibles para siempre.
+### 1. ¿Qué pasa si un atacante roba el Keystore? (What if an attacker steals the keystore?)
+Si un atacante externo o un administrador malicioso del servidor obtiene acceso al almacenamiento y roba el archivo JSON del Keystore (o la base de datos de respaldo), **no podrá descifrar ni extraer las llaves privadas del usuario** de forma directa. 
+- **Razón técnica:** Las llaves privadas están cifradas con **ChaCha20Poly1305** usando una llave KEK de 256 bits derivada de la contraseña a través de **PBKDF2-HMAC-SHA256** con **600,000 iteraciones**.
+- **Seguridad:** A menos que el atacante posea o logre adivinar la contraseña maestra del usuario, el Keystore robado es indistinguible de ruido aleatorio criptográfico. Además, al usar cifrado autenticado (AEAD), cualquier intento de modificar los bits del Keystore robado para vulnerar el sistema será detectado inmediatamente al verificar la firma de autenticación (Tag), provocando que el descifrado aborte de inmediato.
+
+### 2. ¿Qué pasa si la contraseña es débil? (What if a password is weak?)
+Si la contraseña del usuario es débil (baja entropía, ej. "123456" o "password"), la seguridad del sistema se ve **gravemente comprometida** si el atacante logra exfiltrar el Keystore.
+- **Vulnerabilidad:** Aunque las 600,000 iteraciones de PBKDF2 ralentizan drásticamente los intentos de adivinación (haciendo que los ataques con hardware masivo como GPUs sean extremadamente costosos), una contraseña de diccionario o muy corta terminará siendo revelada mediante un ataque de fuerza bruta offline.
+- **Mitigación:** El sistema ralentiza el ataque, pero no puede sustituir la falta de entropía del secreto elegido por el usuario. Es responsabilidad del usuario elegir contraseñas de alta calidad.
+
+### 3. ¿Qué pasa si el dispositivo del usuario está comprometido? (What if a device is compromised?)
+Si el dispositivo final del usuario está infectado con malware, tiene un keylogger activo, o un atacante tiene control total (root/administrador), **todas las garantías de seguridad criptográfica se pierden por completo**.
+- **Impacto:** El atacante podría interceptar la contraseña maestra cuando el usuario la escribe, extraer la clave privada en texto plano directamente desde la memoria RAM mientras está desbloqueada temporalmente, o manipular la lógica de la aplicación para exfiltrar las llaves de los archivos antes de que sean destruidas. 
+- **Postura del sistema:** El sistema se diseña asumiendo que el dispositivo cliente mantiene su integridad operacional (Supuesto de Cliente Confiable). La criptografía protege los datos "en tránsito" y "en reposo hostil", pero no puede defenderse de un entorno de ejecución local corrupto.
+
+---
+
+## Preguntas de Discusión Requeridas (D6 Rubric)
+
+### ¿Por qué cifrar las llaves privadas? (Why encrypt private keys?)
+La llave privada es la raíz de toda la identidad, firma y capacidad de descifrado del usuario en la bóveda. Si las llaves privadas se almacenaran en texto plano en el disco local o base de datos, cualquier compromiso del sistema operativo, robo físico del dispositivo o exfiltración de archivos revelaría inmediatamente el acceso total a todos los documentos históricos y futuros del usuario. Cifrar la llave privada bajo una contraseña derivada asegura que el material criptográfico más crítico permanezca protegido incluso si el medio de almacenamiento es totalmente hostil.
+
+### ¿Qué protege y qué NO protege nuestro sistema? (Protections vs. Non-Protections)
+
+#### Lo que SÍ protege:
+- **Compromiso del Servidor (Server Compromise):** Un atacante que controle la base de datos central o los servidores en la nube no puede descifrar los archivos ni las llaves privadas de los usuarios.
+- **Ataques en el Canal de Comunicación (Man-in-the-Middle):** El tráfico interceptado solo contiene paquetes cifrados y firmas digitales verificables.
+- **Alteraciones del Contenedor (Tampering):** Gracias al uso de AEAD (ChaCha20Poly1305), cualquier modificación no autorizada de los datos o metadatos del Keystore o los archivos `.vault` es detectada y rechazada.
+- **Ataques offline de fuerza bruta tradicionales:** Mediante el alto número de iteraciones (600k) de PBKDF2, se disuade la fuerza bruta rápida para contraseñas de entropía media/alta.
+
+#### Lo que NO protege (Supuestos excluidos):
+- **Malware y Compromiso de Dispositivo Local:** Keyloggers, extractores de memoria RAM o rootkits que comprometan el cliente.
+- **Entropía Nula en Contraseñas:** Contraseñas extremadamente cortas o comunes (susceptibles a ataques offline de fuerza bruta).
+- **Pérdida de Credenciales de Recuperación:** Si el usuario olvida su contraseña maestra y pierde su frase de recuperación, la información cifrada es permanentemente inaccesible (arquitectura Zero-Knowledge).
+- **Ingeniería Social y Coerción:** Phishing o coerción física/legal al usuario para revelar la clave o contraseña.
+
+### Limitaciones del Sistema (System Limitations)
+La principal limitación radica en el modelo de **Cero Conocimiento (Zero-Knowledge)**. Debido a que el servidor no almacena contraseñas ni llaves en texto plano, no existe un flujo centralizado de "Restablecer Contraseña por Email". Si un usuario pierde tanto su contraseña como su frase semilla, no hay forma matemática ni técnica de recuperar su cuenta, resultando en la pérdida irreversible de sus datos.
