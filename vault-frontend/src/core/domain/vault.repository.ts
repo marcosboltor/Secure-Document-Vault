@@ -1,6 +1,6 @@
 export interface RecipientInfo {
   id: string;
-  publicKeyBase64: string; // X25519 public key in base64
+  publicKeyPem: string; // X25519 public key in PEM
 }
 
 export interface EncryptionParams {
@@ -8,14 +8,14 @@ export interface EncryptionParams {
   fileName: string;
   recipients: RecipientInfo[];
   signerId: string;
-  signerPrivateKeyBase64: string; // Ed25519 private key in base64
+  signerPrivateKeyPem: string; // Ed25519 private key in PEM
 }
 
 export interface DecryptionParams {
   vaultFile: Uint8Array;
   userId: string;
-  userPrivateKeyBase64: string; // X25519 private key in base64
-  signerPublicKeyBase64: string; // Ed25519 public key in base64
+  userPrivateKeyPem: string; // X25519 private key in PEM
+  signerPublicKeyPem: string; // Ed25519 public key in PEM
 }
 
 export interface IVaultRepository {

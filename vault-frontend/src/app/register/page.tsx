@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
+import { authRepository } from "@/infrastructure/repositories/api-auth.repository";
 import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -23,6 +24,7 @@ export default function RegisterPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [identity, setIdentity] = useState<any>(null);
   const [institutionalId, setInstitutionalId] = useState("");
+  const [backendId, setBackendId] = useState<string>("");
   const [formData, setFormData] = useState({ name: "", email: "" });
   const [error, setError] = useState<string | null>(null);
 
@@ -33,8 +35,15 @@ export default function RegisterPage() {
 
     try {
       const newIdentity = await vaultRepository.generateIdentity();
-      setIdentity(newIdentity);
 
+      const user = await authRepository.registerUser({
+        email: formData.email,
+        username: formData.name,
+        public_encryption_key: newIdentity.encryption.public,
+        public_signing_key: newIdentity.signing.public,
+      });
+
+      setIdentity(newIdentity);
       // Register with backend using PEM public keys
       setIsRegistering(true);
       const res = await fetch(`${API_URL}/api/v1/users/register`, {
@@ -58,6 +67,7 @@ export default function RegisterPage() {
       setStep(2);
     } catch (err: any) {
       setError(err.message || "Failed to generate identity.");
+
     } finally {
       setIsGenerating(false);
       setIsRegistering(false);
@@ -77,7 +87,6 @@ export default function RegisterPage() {
       null,
       2
     );
-
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

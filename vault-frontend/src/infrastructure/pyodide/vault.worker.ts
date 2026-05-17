@@ -43,21 +43,27 @@ async function initPyodide() {
         
         recipients = []
         for r in recipients_list:
-            pub_bytes = base64.b64decode(r['publicKeyBase64'])
+            # Check if key is available, if not handle accordingly. Assume it's a PEM string.
+            pub_pem = r['publicKeyPem']
             recipients.append({
                 "id": r['id'],
-                "public_key": x25519.X25519PublicKey.from_public_bytes(pub_bytes)
+                "public_key": serialization.load_pem_public_key(pub_pem.encode())
             })
             
         result = encriptar(file_bytes.to_bytes(), name, recipients, signer_id, signer_key)
         return result
 
-    def js_desencriptar(vault_bytes, user_id, user_key_b64, signer_pub_b64):
-        user_key = x25519.X25519PrivateKey.from_private_bytes(base64.b64decode(user_key_b64))
-        signer_pub = ed25519.Ed25519PublicKey.from_public_bytes(base64.b64decode(signer_pub_b64))
+    def js_desencriptar(vault_bytes, user_id, user_key_pem, signer_pub_pem):
+        user_key = serialization.load_pem_private_key(user_key_pem.encode(), password=None)
+        signer_pub = serialization.load_pem_public_key(signer_pub_pem.encode())
         
         result = desencriptar(vault_bytes.to_bytes(), user_id, user_key, signer_pub)
         return result
+
+    def js_sign_challenge(challenge_str, private_key_pem):
+        priv_key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
+        signature = priv_key.sign(challenge_str.encode())
+        return base64.b64encode(signature).decode()
 
     def js_generar_identidad():
         # Generar par de cifrado (X25519)
@@ -108,6 +114,7 @@ async function initPyodide() {
                 "private": priv_ed_raw,
                 "public": pub_ed_raw,
                 "publicPem": pub_ed_pem
+
             }
         }
   `);
@@ -124,13 +131,13 @@ self.onmessage = async (e: MessageEvent) => {
     if (type === "INIT") {
       self.postMessage({ id, type: "READY" });
     } else if (type === "ENCRYPT") {
-      const { file, fileName, recipients, signerId, signerPrivateKeyBase64 } = payload;
-      const result = py.runPython("js_encriptar")(file, fileName, recipients, signerId, signerPrivateKeyBase64);
+      const { file, fileName, recipients, signerId, signerPrivateKeyPem } = payload;
+      const result = py.runPython("js_encriptar")(file, fileName, recipients, signerId, signerPrivateKeyPem);
       const output = result.toJs();
       self.postMessage({ id, type: "RESULT", payload: output }, [output.buffer]);
     } else if (type === "DECRYPT") {
-      const { vaultFile, userId, userPrivateKeyBase64, signerPublicKeyBase64 } = payload;
-      const result = py.runPython("js_desencriptar")(vaultFile, userId, userPrivateKeyBase64, signerPublicKeyBase64);
+      const { vaultFile, userId, userPrivateKeyPem, signerPublicKeyPem } = payload;
+      const result = py.runPython("js_desencriptar")(vaultFile, userId, userPrivateKeyPem, signerPublicKeyPem);
       const output = result.toJs();
       self.postMessage({ id, type: "RESULT", payload: output }, [output.buffer]);
     } else if (type === "GENERATE_IDENTITY") {
@@ -139,6 +146,7 @@ self.onmessage = async (e: MessageEvent) => {
     } else if (type === "SIGN_CHALLENGE") {
       const { challenge, signerPrivateKeyBase64 } = payload;
       const result = py.runPython("js_firmar_challenge")(challenge, signerPrivateKeyBase64);
+
       self.postMessage({ id, type: "RESULT", payload: result });
     }
   } catch (error: any) {

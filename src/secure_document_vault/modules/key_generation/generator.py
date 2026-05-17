@@ -1,5 +1,6 @@
 from cryptography.hazmat.primitives.asymmetric import x25519, ed25519
 from cryptography.hazmat.primitives import serialization
+from secure_document_vault.modules.key_store.generator import KeyProtector
 
 
 class KeyManager:
@@ -10,7 +11,7 @@ class KeyManager:
         self.__db_signing_public_keys = {}
         self.__db_signing_private_keys = {}
 
-    def generate_keys_for_user(self, user_id: str):
+    def generate_keys_for_user(self, user_id: str, password: str):
         """
         Generates a pair of X25519 keys for encryption and
         a pair of Ed25519 keys for signing.
@@ -19,29 +20,19 @@ class KeyManager:
         private_key = x25519.X25519PrivateKey.generate()
         public_key = private_key.public_key()
 
-        pem_private = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
-
         pem_public = public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo,
         )
 
         self.__db_public_keys[user_id] = pem_public
-        self.__db_private_keys[user_id] = pem_private
+        self.__db_private_keys[user_id] = KeyProtector.protect_key(
+            password, private_key, user_id
+        )
 
         # 2. Signing Keys (Ed25519)
         signing_private = ed25519.Ed25519PrivateKey.generate()
         signing_public = signing_private.public_key()
-
-        pem_signing_private = signing_private.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
 
         pem_signing_public = signing_public.public_bytes(
             encoding=serialization.Encoding.PEM,
@@ -49,7 +40,9 @@ class KeyManager:
         )
 
         self.__db_signing_public_keys[user_id] = pem_signing_public
-        self.__db_signing_private_keys[user_id] = pem_signing_private
+        self.__db_signing_private_keys[user_id] = KeyProtector.protect_key(
+            password, signing_private, user_id
+        )
 
     def get_public_key(self, user_id: str):
         """

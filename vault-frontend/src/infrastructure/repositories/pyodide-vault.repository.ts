@@ -1,7 +1,7 @@
-import { 
-  IVaultRepository, 
-  EncryptionParams, 
-  DecryptionParams 
+import {
+  IVaultRepository,
+  EncryptionParams,
+  DecryptionParams
 } from "@/core/domain/vault.repository";
 
 export class PyodideVaultRepository implements IVaultRepository {

@@ -6,9 +6,9 @@ import { ArrowRight, Fingerprint, Lock, Upload, CheckCircle2, ShieldCheck, Alert
 import Image from "next/image";
 import styles from "./page.module.css";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
+import { authRepository } from "@/infrastructure/repositories/api-auth.repository";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 export default function Home() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -21,6 +21,7 @@ export default function Home() {
   useEffect(() => {
     vaultRepository.isReady().then(() => setIsEngineReady(true));
   }, []);
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,7 +50,6 @@ export default function Home() {
       setError("Please upload your identity file to initialize session.");
       return;
     }
-
     setIsLoggingIn(true);
     setError(null);
 
@@ -57,11 +57,9 @@ export default function Home() {
       const userId = identity.institutionalId;
       const signerPrivateKey = identity.identity.signing.private;
 
-      // Generate a random challenge and sign it with Ed25519 private key
       const challenge = crypto.randomUUID();
       const signature = await vaultRepository.signChallenge(challenge, signerPrivateKey);
 
-      // Authenticate with backend
       const loginRes = await fetch(`${API_URL}/api/v1/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,12 +77,18 @@ export default function Home() {
 
       const { access_token, refresh_token } = await loginRes.json();
 
-      // Persist session
+      // Store tokens in cookies for middleware compatibility
+      document.cookie = `access_token=${access_token}; path=/; max-age=3600; samesite=strict`;
+      document.cookie = `refresh_token=${refresh_token}; path=/; max-age=86400; samesite=strict`;
+
+      // Also store in localStorage for Authorization headers
       localStorage.setItem("vault_token", access_token);
       localStorage.setItem("vault_refresh_token", refresh_token);
       localStorage.setItem("vault_user", JSON.stringify({
         id: userId,
         username: identity.name,
+        name: identity.name,
+        email: identity.email,
         publicKeys: {
           encryption: identity.identity.encryption.public,
           signing: identity.identity.signing.public,
@@ -97,6 +101,8 @@ export default function Home() {
       setError(err.message || "Login failed.");
     } finally {
       setIsLoggingIn(false);
+    }
+
     }
   };
 
@@ -166,6 +172,7 @@ export default function Home() {
             ) : (
               "UPLOAD CORE TO START"
             )}
+
           </button>
         </form>
 
