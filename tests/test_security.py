@@ -1,18 +1,21 @@
 import pytest
 from cryptography.hazmat.primitives.asymmetric import x25519, ed25519
+from secure_document_vault.modules.key_store.generator import KeyProtector
 from secure_document_vault.core.facade import encriptar, desencriptar
 from secure_document_vault.core.exceptions import IntegrityErrorException
 
 
 # Helper para crear usuarios rapidamente
 def create_user(user_id):
+    """Creates a user with X25519 and Ed25519 key pairs."""
     x_priv = x25519.X25519PrivateKey.generate()
     e_priv = ed25519.Ed25519PrivateKey.generate()
     return {
         "id": user_id,
-        "private_key": x_priv,
+        "password": "password123",
+        "private_key": KeyProtector.protect_key("password123", x_priv, user_id),
         "public_key": x_priv.public_key(),
-        "signing_private_key": e_priv,
+        "signing_private_key": KeyProtector.protect_key("password123", e_priv, user_id),
         "signing_public_key": e_priv.public_key(),
     }
 
@@ -27,18 +30,27 @@ def test_encrypt_decrypt_success():
     plaintext = b"Mensaje secreto de prueba"
 
     vault = encriptar(
-        plaintext, nombre_archivo, recipients, alice["id"], alice["signing_private_key"]
+        plaintext,
+        nombre_archivo,
+        recipients,
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     # Alice should be able to decrypt
     recovered_alice = desencriptar(
-        vault, "alice", alice["private_key"], alice["signing_public_key"]
+        vault,
+        "alice",
+        alice["private_key"],
+        alice["password"],
+        alice["signing_public_key"],
     )
     assert recovered_alice == plaintext
 
     # Bob should be able to decrypt
     recovered_bob = desencriptar(
-        vault, "bob", bob["private_key"], alice["signing_public_key"]
+        vault, "bob", bob["private_key"], bob["password"], alice["signing_public_key"]
     )
     assert recovered_bob == plaintext
 
@@ -50,25 +62,44 @@ def test_unauthorized_user():
 
     plaintext = b"Secreto de Alice"
     vault = encriptar(
-        plaintext, "doc.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "doc.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     with pytest.raises(IntegrityErrorException, match="no autorizado"):
-        desencriptar(vault, "eve", eve["private_key"], alice["signing_public_key"])
+        desencriptar(
+            vault,
+            "eve",
+            eve["private_key"],
+            eve["password"],
+            alice["signing_public_key"],
+        )
 
 
 # ESCENARIO 3: Wrong private key then fails.
 def test_wrong_private_key():
     alice = create_user("alice")
     fake_alice_key = x25519.X25519PrivateKey.generate()
+    fake_keystore = KeyProtector.protect_key("badpassword", fake_alice_key, "alice")
 
     plaintext = b"Dato"
     vault = encriptar(
-        plaintext, "doc.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "doc.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     with pytest.raises(IntegrityErrorException, match="Error al descifrar"):
-        desencriptar(vault, "alice", fake_alice_key, alice["signing_public_key"])
+        desencriptar(
+            vault, "alice", fake_keystore, "badpassword", alice["signing_public_key"]
+        )
 
 
 # ESCENARIO 4: Tampered recipient list then decryption fails.
@@ -76,7 +107,12 @@ def test_metadata_tampering():
     alice = create_user("alice")
     plaintext = b"Archivo confidencial"
     vault = encriptar(
-        plaintext, "secreto.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "secreto.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     corrupted = bytearray(vault)
@@ -87,7 +123,11 @@ def test_metadata_tampering():
 
     with pytest.raises(IntegrityErrorException):
         desencriptar(
-            bytes(corrupted), "alice", alice["private_key"], alice["signing_public_key"]
+            bytes(corrupted),
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
 
 
@@ -96,7 +136,12 @@ def test_ciphertext_tampering():
     alice = create_user("alice")
     plaintext = b"Datos importantes"
     vault = encriptar(
-        plaintext, "doc.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "doc.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     corrupted = bytearray(vault)
@@ -105,7 +150,11 @@ def test_ciphertext_tampering():
 
     with pytest.raises(IntegrityErrorException):
         desencriptar(
-            bytes(corrupted), "alice", alice["private_key"], alice["signing_public_key"]
+            bytes(corrupted),
+            "alice",
+            alice["private_key"],
+            alice["password"],
+            alice["signing_public_key"],
         )
 
 
@@ -115,10 +164,20 @@ def test_nonce_randomness():
     plaintext = b"Mismo mensaje"
 
     vault1 = encriptar(
-        plaintext, "file.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "file.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
     vault2 = encriptar(
-        plaintext, "file.txt", [alice], alice["id"], alice["signing_private_key"]
+        plaintext,
+        "file.txt",
+        [alice],
+        alice["id"],
+        alice["signing_private_key"],
+        alice["password"],
     )
 
     assert vault1 != vault2

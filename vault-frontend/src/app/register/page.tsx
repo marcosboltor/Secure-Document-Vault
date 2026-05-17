@@ -2,36 +2,47 @@
 
 import { useState, useEffect } from "react";
 import styles from "./page.module.css";
-import { 
-  ShieldCheck, 
-  Key, 
-  Download, 
-  CheckCircle2, 
-  Loader2, 
+import {
+  ShieldCheck,
+  Key,
+  Download,
+  CheckCircle2,
+  Loader2,
   ArrowRight,
   ShieldAlert
 } from "lucide-react";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
+import { authRepository } from "@/infrastructure/repositories/api-auth.repository";
 import Link from "next/link";
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [identity, setIdentity] = useState<any>(null);
+  const [backendId, setBackendId] = useState<string>("");
   const [formData, setFormData] = useState({ name: "", email: "" });
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsGenerating(true);
-    
+
     try {
       // Generate keys using the Python Engine
       const newIdentity = await vaultRepository.generateIdentity();
+
+      const user = await authRepository.registerUser({
+        email: formData.email,
+        username: formData.name,
+        public_encryption_key: newIdentity.encryption.public,
+        public_signing_key: newIdentity.signing.public,
+      });
+
       setIdentity(newIdentity);
+      setBackendId(user.id);
       setStep(2);
-    } catch (error) {
-      console.error("Identity generation failed:", error);
-      alert("Failed to generate identity. Check console.");
+    } catch (error: any) {
+      console.error("Identity generation or registration failed:", error);
+      alert("Failed to register. " + (error.message || "Check console."));
     } finally {
       setIsGenerating(false);
     }
@@ -43,9 +54,9 @@ export default function RegisterPage() {
       ...formData,
       identity,
       createdAt: new Date().toISOString(),
-      institutionalId: "SDV-" + Math.random().toString(36).substring(2, 8).toUpperCase()
+      institutionalId: backendId
     }, null, 2);
-    
+
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -69,9 +80,9 @@ export default function RegisterPage() {
           <form className={styles.form} onSubmit={handleGenerate}>
             <div className={styles.inputGroup}>
               <label>FULL LEGAL NAME</label>
-              <input 
-                type="text" 
-                required 
+              <input
+                type="text"
+                required
                 placeholder="e.g. Eleanor Vance"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -79,15 +90,15 @@ export default function RegisterPage() {
             </div>
             <div className={styles.inputGroup}>
               <label>INSTITUTIONAL EMAIL</label>
-              <input 
-                type="email" 
-                required 
+              <input
+                type="email"
+                required
                 placeholder="e.g. e.vance@fortress.sys"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
-            
+
             <div className={styles.infoBox}>
               <ShieldAlert size={16} />
               <p>Generation occurs locally. Your private keys will never be transmitted to the server during this process.</p>
@@ -100,7 +111,7 @@ export default function RegisterPage() {
                 <><Key size={18} /> INITIALIZE IDENTITY</>
               )}
             </button>
-            
+
             <p className={styles.footerLink}>
               Already registered? <Link href="/">Access Vault</Link>
             </p>
