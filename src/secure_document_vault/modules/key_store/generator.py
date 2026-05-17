@@ -1,4 +1,5 @@
 import os
+import json
 import base64
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
@@ -81,3 +82,25 @@ class KeyProtector:
         )
 
         return private_key_obj
+
+    @staticmethod
+    def backup_keystore(keystore_dict: dict, filepath: str) -> None:
+        """
+        Escribe el diccionario de Keystore en un archivo local usando json.dump.
+        """
+        dirname = os.path.dirname(filepath)
+        if dirname and not os.path.exists(dirname):
+            os.makedirs(dirname)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(keystore_dict, f, indent=4)
+
+    @staticmethod
+    def restore_keystore(filepath: str) -> dict:
+        """
+        Lee un archivo .keystore (o JSON) desde el disco usando json.load
+        y retorna el diccionario para el KeyProtector.
+        """
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"El archivo de keystore no existe: {filepath}")
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)

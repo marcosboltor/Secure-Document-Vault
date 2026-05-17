@@ -128,3 +128,42 @@ def test_stolen_keystore_alone():
         with pytest.raises(ValueError,
                            match="""CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO"""):
             KeyProtector.verify_password(guess, stolen_keystore)
+
+
+def test_backup_restore_file(tmp_path):
+    """
+    Verifica que las operaciones I/O de respaldo (backup) y restauración (restore)
+    a nivel de archivo físico funcionan correctamente empleando un archivo temporal.
+    """
+    password = "MySecureBackupPassword!"
+    original_private_key = ed25519.Ed25519PrivateKey.generate()
+
+    # Generar keystore
+    keystore_dict = KeyProtector.protect_key(password, original_private_key, "user-backup-io")
+
+    # Definir ruta de archivo temporal
+    backup_file = tmp_path / "user.keystore"
+
+    # Exportar (Backup)
+    KeyProtector.backup_keystore(keystore_dict, str(backup_file))
+    assert backup_file.exists()
+
+    # Importar (Restore)
+    restored_dict = KeyProtector.restore_keystore(str(backup_file))
+
+    # Verificar que el contenido importado sea idéntico
+    assert restored_dict == keystore_dict
+
+    # Verificar descifrado con la llave restaurada
+    recovered_key = KeyProtector.verify_password(password, restored_dict)
+
+    original_pub_bytes = original_private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw
+    )
+    recovered_pub_bytes = recovered_key.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw
+    )
+
+    assert original_pub_bytes == recovered_pub_bytes
