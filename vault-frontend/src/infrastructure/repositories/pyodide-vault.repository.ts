@@ -1,7 +1,7 @@
-import { 
-  IVaultRepository, 
-  EncryptionParams, 
-  DecryptionParams 
+import {
+  IVaultRepository,
+  EncryptionParams,
+  DecryptionParams
 } from "@/core/domain/vault.repository";
 
 export class PyodideVaultRepository implements IVaultRepository {
@@ -72,6 +72,11 @@ export class PyodideVaultRepository implements IVaultRepository {
   async generateIdentity(): Promise<any> {
     await this.isReady();
     return this.sendRequest("GENERATE_IDENTITY", {});
+  }
+
+  async signChallenge(challenge: string, privateKeyPem: string): Promise<string> {
+    await this.isReady();
+    return this.sendRequest("SIGN_CHALLENGE", { challenge, privateKeyPem }) as unknown as Promise<string>;
   }
 }
 
