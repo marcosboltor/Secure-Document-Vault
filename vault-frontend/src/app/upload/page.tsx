@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from "react";
 import styles from "./page.module.css";
-import { 
-  Upload as UploadIcon, 
-  FileCheck, 
-  ShieldCheck, 
+import {
+  Upload as UploadIcon,
+  FileCheck,
+  ShieldCheck,
   Settings,
   Lock,
   Loader2,
   CheckCircle2,
-  Circle
+  Circle,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
 import { userRepository } from "@/infrastructure/repositories/api-user.repository";
@@ -18,16 +20,28 @@ import { fileRepository } from "@/infrastructure/repositories/api-file.repositor
 import { User } from "@/core/domain/user.repository";
 import { useRouter } from "next/navigation";
 
+interface Toast {
+  id: string;
+  message: string;
+}
+
 export default function UploadPage() {
   const router = useRouter();
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isEngineReady, setIsEngineReady] = useState(false);
-  
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+
+  const addToast = (message: string) => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts((prev) => [...prev, { id, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
+  };
 
   useEffect(() => {
     vaultRepository.isReady().then(() => {
@@ -77,7 +91,7 @@ export default function UploadPage() {
       if (!recipientsData.find(r => r.id === currentUser.id)) {
         recipientsData.push({
           id: currentUser.id,
-          publicKeyBase64: currentUser.publicKeys.encryption
+          publicKeyBase64: currentUser.publicKeys.encryption,
         });
       }
 
@@ -103,20 +117,18 @@ export default function UploadPage() {
         id: crypto.randomUUID(),
         name: file.name,
         ownerId: currentUser.id,
-        ownerName: currentUser.name,
+        ownerName: currentUser.username,
         recipients: finalRecipientIds,
         createdAt: new Date().toISOString(),
         size: encrypted.length,
         encryptedContent: encrypted,
-        signerPublicKeyBase64: privateKeys.signing?.public
+        signerPublicKeyBase64: privateKeys.signing?.public,
       });
 
-      console.log("Encrypted .vault saved to browser cache");
-      alert(`File "${file.name}" encrypted and stored in local vault!`);
       router.push("/files");
     } catch (error: any) {
       console.error("Encryption failed:", error);
-      alert(error.message || "Encryption failed.");
+      addToast(error.message || "Encryption failed.");
     } finally {
       setIsProcessing(false);
     }
@@ -124,6 +136,19 @@ export default function UploadPage() {
 
   return (
     <div className={styles.container}>
+      {/* Toast notifications */}
+      <div className={styles.toastContainer}>
+        {toasts.map((toast) => (
+          <div key={toast.id} className={styles.toast}>
+            <AlertTriangle size={16} />
+            <span>{toast.message}</span>
+            <button onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}>
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <div className={styles.header}>
         <h1 className={styles.title}>Secure Staging</h1>
         <p className={styles.subtitle}>
@@ -182,8 +207,8 @@ export default function UploadPage() {
                           : <Circle size={16} className={styles.uncheckIcon} />
                         }
                         <div className={styles.userInfo}>
-                          <span className={styles.userName}>{user.name}</span>
-                          <span className={styles.userEmail}>{user.email}</span>
+                          <span className={styles.userName}>{user.username}</span>
+                          <span className={styles.userEmail}>{user.id.substring(0, 8)}...</span>
                         </div>
                       </div>
                     ))

@@ -30,6 +30,11 @@ async function initPyodide() {
     from cryptography.hazmat.primitives import serialization
     import base64
 
+    def js_firmar_challenge(challenge_str, signer_key_b64):
+        signer_key = ed25519.Ed25519PrivateKey.from_private_bytes(base64.b64decode(signer_key_b64))
+        signature = signer_key.sign(challenge_str.encode())
+        return base64.b64encode(signature).decode()
+
     def js_encriptar(file_bytes, name, recipients_json, signer_id, signer_key_b64):
         signer_key = ed25519.Ed25519PrivateKey.from_private_bytes(base64.b64decode(signer_key_b64))
         
@@ -58,33 +63,51 @@ async function initPyodide() {
         # Generar par de cifrado (X25519)
         priv_x = x25519.X25519PrivateKey.generate()
         pub_x = priv_x.public_key()
-        
+
         # Generar par de firma (Ed25519)
         priv_ed = ed25519.Ed25519PrivateKey.generate()
         pub_ed = priv_ed.public_key()
-        
+
+        # Raw bytes (base64) para operaciones criptograficas internas
+        priv_x_raw = base64.b64encode(priv_x.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption()
+        )).decode()
+        pub_x_raw = base64.b64encode(pub_x.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw
+        )).decode()
+        priv_ed_raw = base64.b64encode(priv_ed.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption()
+        )).decode()
+        pub_ed_raw = base64.b64encode(pub_ed.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw
+        )).decode()
+
+        # PEM format para registro en el backend
+        pub_x_pem = pub_x.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode()
+        pub_ed_pem = pub_ed.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode()
+
         return {
             "encryption": {
-                "private": base64.b64encode(priv_x.private_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PrivateFormat.Raw,
-                    encryption_algorithm=serialization.NoEncryption()
-                )).decode(),
-                "public": base64.b64encode(pub_x.public_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PublicFormat.Raw
-                )).decode()
+                "private": priv_x_raw,
+                "public": pub_x_raw,
+                "publicPem": pub_x_pem
             },
             "signing": {
-                "private": base64.b64encode(priv_ed.private_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PrivateFormat.Raw,
-                    encryption_algorithm=serialization.NoEncryption()
-                )).decode(),
-                "public": base64.b64encode(pub_ed.public_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PublicFormat.Raw
-                )).decode()
+                "private": priv_ed_raw,
+                "public": pub_ed_raw,
+                "publicPem": pub_ed_pem
             }
         }
   `);
@@ -113,6 +136,10 @@ self.onmessage = async (e: MessageEvent) => {
     } else if (type === "GENERATE_IDENTITY") {
       const result = py.runPython("js_generar_identidad")();
       self.postMessage({ id, type: "RESULT", payload: result.toJs() });
+    } else if (type === "SIGN_CHALLENGE") {
+      const { challenge, signerPrivateKeyBase64 } = payload;
+      const result = py.runPython("js_firmar_challenge")(challenge, signerPrivateKeyBase64);
+      self.postMessage({ id, type: "RESULT", payload: result });
     }
   } catch (error: any) {
     self.postMessage({ id, type: "ERROR", error: error.message });

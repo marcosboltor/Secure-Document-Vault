@@ -73,6 +73,11 @@ export class PyodideVaultRepository implements IVaultRepository {
     await this.isReady();
     return this.sendRequest("GENERATE_IDENTITY", {});
   }
+
+  async signChallenge(challenge: string, signerPrivateKeyBase64: string): Promise<string> {
+    await this.isReady();
+    return this.sendRequest("SIGN_CHALLENGE", { challenge, signerPrivateKeyBase64 }) as unknown as Promise<string>;
+  }
 }
 
 // Export a singleton instance

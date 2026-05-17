@@ -22,5 +22,6 @@ export interface IVaultRepository {
   encrypt(params: EncryptionParams): Promise<Uint8Array>;
   decrypt(params: DecryptionParams): Promise<Uint8Array>;
   generateIdentity(): Promise<any>;
+  signChallenge(challenge: string, signerPrivateKeyBase64: string): Promise<string>;
   isReady(): Promise<boolean>;
 }

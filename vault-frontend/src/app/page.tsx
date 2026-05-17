@@ -1,17 +1,26 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Fingerprint, Lock, Upload, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react";
+import { ArrowRight, Fingerprint, Lock, Upload, CheckCircle2, ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import styles from "./page.module.css";
+import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function Home() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [identity, setIdentity] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isEngineReady, setIsEngineReady] = useState(false);
+
+  useEffect(() => {
+    vaultRepository.isReady().then(() => setIsEngineReady(true));
+  }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -27,36 +36,68 @@ export default function Home() {
         } else {
           setError("Invalid identity file structure.");
         }
-      } catch (err) {
+      } catch {
         setError("Failed to parse identity file.");
       }
     };
     reader.readAsText(file);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identity) {
       setError("Please upload your identity file to initialize session.");
       return;
     }
-    
-    // In a real app, we would store this in a secure context/store
-    // For the demo, we'll store the name in localStorage to show the user is "logged in"
-    localStorage.setItem("vault_user", JSON.stringify({
-      id: identity.institutionalId || "USER-1",
-      name: identity.name,
-      email: identity.email,
-      publicKeys: {
-        encryption: identity.identity.encryption.public,
-        signing: identity.identity.signing.public
+
+    setIsLoggingIn(true);
+    setError(null);
+
+    try {
+      const userId = identity.institutionalId;
+      const signerPrivateKey = identity.identity.signing.private;
+
+      // Generate a random challenge and sign it with Ed25519 private key
+      const challenge = crypto.randomUUID();
+      const signature = await vaultRepository.signChallenge(challenge, signerPrivateKey);
+
+      // Authenticate with backend
+      const loginRes = await fetch(`${API_URL}/api/v1/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          challenge,
+          signature,
+        }),
+      });
+
+      if (!loginRes.ok) {
+        const err = await loginRes.json().catch(() => ({}));
+        throw new Error(err.detail || "Authentication failed. Check your identity file.");
       }
-    }));
-    
-    // Also store private keys in session (DO NOT do this in production, use a secure state manager)
-    sessionStorage.setItem("vault_private_keys", JSON.stringify(identity.identity));
-    
-    router.push("/files");
+
+      const { access_token, refresh_token } = await loginRes.json();
+
+      // Persist session
+      localStorage.setItem("vault_token", access_token);
+      localStorage.setItem("vault_refresh_token", refresh_token);
+      localStorage.setItem("vault_user", JSON.stringify({
+        id: userId,
+        username: identity.name,
+        publicKeys: {
+          encryption: identity.identity.encryption.public,
+          signing: identity.identity.signing.public,
+        },
+      }));
+      sessionStorage.setItem("vault_private_keys", JSON.stringify(identity.identity));
+
+      router.push("/files");
+    } catch (err: any) {
+      setError(err.message || "Login failed.");
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   return (
@@ -83,16 +124,16 @@ export default function Home() {
         <form className={styles.form} onSubmit={handleLogin}>
           <div className={styles.inputGroup}>
             <label>Cryptographic Identity File</label>
-            <div 
+            <div
               className={`${styles.fileUploadZone} ${identity ? styles.fileUploaded : ""}`}
               onClick={() => fileInputRef.current?.click()}
             >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
                 accept=".json"
-                hidden 
+                hidden
               />
               {identity ? (
                 <div className={styles.fileSuccess}>
@@ -115,8 +156,12 @@ export default function Home() {
             </div>
           )}
 
-          <button type="submit" className={styles.primaryButton} disabled={!identity}>
-            {identity ? (
+          <button type="submit" className={styles.primaryButton} disabled={!identity || isLoggingIn || !isEngineReady}>
+            {!isEngineReady ? (
+              <><Loader2 size={18} className={styles.spinner} /> INITIALIZING ENGINE...</>
+            ) : isLoggingIn ? (
+              <><Loader2 size={18} className={styles.spinner} /> AUTHENTICATING...</>
+            ) : identity ? (
               <><ShieldCheck size={18} /> INITIALIZE ACCESS <ArrowRight size={18} /></>
             ) : (
               "UPLOAD CORE TO START"

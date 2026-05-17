@@ -1,56 +1,88 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import styles from "./page.module.css";
-import { 
-  ShieldCheck, 
-  Key, 
-  Download, 
-  CheckCircle2, 
-  Loader2, 
+import {
+  ShieldCheck,
+  Key,
+  Download,
+  CheckCircle2,
+  Loader2,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  AlertCircle,
 } from "lucide-react";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
 import Link from "next/link";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [identity, setIdentity] = useState<any>(null);
+  const [institutionalId, setInstitutionalId] = useState("");
   const [formData, setFormData] = useState({ name: "", email: "" });
+  const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsGenerating(true);
-    
+    setError(null);
+
     try {
-      // Generate keys using the Python Engine
       const newIdentity = await vaultRepository.generateIdentity();
       setIdentity(newIdentity);
+
+      // Register with backend using PEM public keys
+      setIsRegistering(true);
+      const res = await fetch(`${API_URL}/api/v1/users/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          username: formData.name,
+          public_encryption_key: newIdentity.encryption.publicPem,
+          public_signing_key: newIdentity.signing.publicPem,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Registration failed. Email may already be in use.");
+      }
+
+      const user = await res.json();
+      setInstitutionalId(user.id);
       setStep(2);
-    } catch (error) {
-      console.error("Identity generation failed:", error);
-      alert("Failed to generate identity. Check console.");
+    } catch (err: any) {
+      setError(err.message || "Failed to generate identity.");
     } finally {
       setIsGenerating(false);
+      setIsRegistering(false);
     }
   };
 
   const downloadKeyFile = () => {
     if (!identity) return;
-    const data = JSON.stringify({
-      ...formData,
-      identity,
-      createdAt: new Date().toISOString(),
-      institutionalId: "SDV-" + Math.random().toString(36).substring(2, 8).toUpperCase()
-    }, null, 2);
-    
+    const data = JSON.stringify(
+      {
+        name: formData.name,
+        email: formData.email,
+        identity,
+        createdAt: new Date().toISOString(),
+        institutionalId,
+      },
+      null,
+      2
+    );
+
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Vault_Identity_${formData.name.replace(/\s+/g, '_')}.json`;
+    a.download = `Vault_Identity_${formData.name.replace(/\s+/g, "_")}.json`;
     a.click();
   };
 
@@ -69,9 +101,9 @@ export default function RegisterPage() {
           <form className={styles.form} onSubmit={handleGenerate}>
             <div className={styles.inputGroup}>
               <label>FULL LEGAL NAME</label>
-              <input 
-                type="text" 
-                required 
+              <input
+                type="text"
+                required
                 placeholder="e.g. Eleanor Vance"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -79,28 +111,37 @@ export default function RegisterPage() {
             </div>
             <div className={styles.inputGroup}>
               <label>INSTITUTIONAL EMAIL</label>
-              <input 
-                type="email" 
-                required 
+              <input
+                type="email"
+                required
                 placeholder="e.g. e.vance@fortress.sys"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
-            
+
             <div className={styles.infoBox}>
               <ShieldAlert size={16} />
               <p>Generation occurs locally. Your private keys will never be transmitted to the server during this process.</p>
             </div>
 
-            <button type="submit" className={styles.primaryBtn} disabled={isGenerating}>
+            {error && (
+              <div className={styles.errorBox}>
+                <AlertCircle size={16} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button type="submit" className={styles.primaryBtn} disabled={isGenerating || isRegistering}>
               {isGenerating ? (
-                <><Loader2 className={styles.spinner} size={18} /> GENERATING RSA/ECC CORES...</>
+                <><Loader2 className={styles.spinner} size={18} /> GENERATING KEYS...</>
+              ) : isRegistering ? (
+                <><Loader2 className={styles.spinner} size={18} /> REGISTERING...</>
               ) : (
                 <><Key size={18} /> INITIALIZE IDENTITY</>
               )}
             </button>
-            
+
             <p className={styles.footerLink}>
               Already registered? <Link href="/">Access Vault</Link>
             </p>
