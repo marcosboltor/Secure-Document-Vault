@@ -16,7 +16,7 @@ class KeyProtector:
         private_key_bytes = private_key_obj.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
+            encryption_algorithm=serialization.NoEncryption(),
         )
 
         # Generar un salt pseudo aleatorio criptograficamente seguro
@@ -28,9 +28,9 @@ class KeyProtector:
             algorithm=hashes.SHA256(),
             length=32,  # Llave de 256 bits
             salt=salt,
-            iterations=600_000
+            iterations=600_000,
         )
-        kek = kdf.derive(password.encode('utf-8'))
+        kek = kdf.derive(password.encode("utf-8"))
 
         # Cifrar llave con bytes de llave usando ChaCha20
         nonce = os.urandom(12)
@@ -38,17 +38,14 @@ class KeyProtector:
         encrypted_key = chacha20.encrypt(nonce, private_key_bytes, None)
 
         return {
-            "metadata": {
-                "user_id": user_id,
-                "description": "Encrypted Private Key"
-            },
+            "metadata": {"user_id": user_id, "description": "Encrypted Private Key"},
             "kdf_parameters": {
                 "kdf_algorithm": "PBDKF2-HMAC-SHA256",
                 "iterations": 600_000,
-                "salt": base64.b64encode(salt).decode('utf-8')
+                "salt": base64.b64encode(salt).decode("utf-8"),
             },
-            "nonce": base64.b64encode(nonce).decode('utf-8'),
-            "encrypted_key": base64.b64encode(encrypted_key).decode('utf-8')
+            "nonce": base64.b64encode(nonce).decode("utf-8"),
+            "encrypted_key": base64.b64encode(encrypted_key).decode("utf-8"),
         }
 
     @staticmethod
@@ -63,10 +60,10 @@ class KeyProtector:
             algorithm=hashes.SHA256(),
             length=32,  # Llave dde 256 bits
             salt=salt,
-            iterations=iterations
+            iterations=iterations,
         )
 
-        kek = kdf.derive(password.encode('utf-8'))
+        kek = kdf.derive(password.encode("utf-8"))
 
         chacha = ChaCha20Poly1305(kek)
 
@@ -77,8 +74,7 @@ class KeyProtector:
             raise ValueError("CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO")
 
         private_key_obj = serialization.load_pem_private_key(
-            recovered_key_bytes,
-            password=None
+            recovered_key_bytes, password=None
         )
 
         return private_key_obj

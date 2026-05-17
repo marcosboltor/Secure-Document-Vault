@@ -21,22 +21,26 @@ def create_user(user_id):
 
 def test_correct_password():
     """Verifies that access is granted when password is correct"""
-    bob = create_user('bob-123')
+    bob = create_user("bob-123")
     # Derive KEK
     protected_key_dict = KeyProtector.protect_key(
-        "Secret_password-123", bob["private_key"], bob["id"])
+        "Secret_password-123", bob["private_key"], bob["id"]
+    )
 
     # Get the original key with the password
-    recovered_key = KeyProtector.verify_password("Secret_password-123",
-                                                 protected_key_dict)
+    recovered_key = KeyProtector.verify_password(
+        "Secret_password-123", protected_key_dict
+    )
 
-    original_key_bytes = bob["private_key"].public_key().public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw
+    original_key_bytes = (
+        bob["private_key"]
+        .public_key()
+        .public_bytes(
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+        )
     )
     recovered_key_bytes = recovered_key.public_key().public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw
+        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
     )
 
     assert original_key_bytes == recovered_key_bytes
@@ -44,22 +48,22 @@ def test_correct_password():
 
 def test_wrong_password():
     """Verifies that access is not granted when password is incorrect"""
-    bob = create_user('bob-123')
+    bob = create_user("bob-123")
     # Derive KEK
     protected_key_dict = KeyProtector.protect_key(
-        "Secret_password-123", bob["private_key"], bob["id"])
+        "Secret_password-123", bob["private_key"], bob["id"]
+    )
 
-    with pytest.raises(ValueError,
-                       match="CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO"):
-        KeyProtector.verify_password("Incorrect_password-123",
-                                     protected_key_dict)
+    with pytest.raises(ValueError, match="CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO"):
+        KeyProtector.verify_password("Incorrect_password-123", protected_key_dict)
 
 
 def test_modified_keystore():
     """Verifies if keystore is modified"""
     alice = create_user("alice-567")
     protected_key_dict = KeyProtector.protect_key(
-        "password-12345", alice["private_key"], alice["id"])
+        "password-12345", alice["private_key"], alice["id"]
+    )
 
     protected_key = protected_key_dict["encrypted_key"]
 
@@ -71,12 +75,11 @@ def test_modified_keystore():
     decoded_key[0] ^= 1
 
     # Store again in the dict and try to get the key again
-    encoded_key = base64.b64encode(decoded_key).decode('utf-8')
+    encoded_key = base64.b64encode(decoded_key).decode("utf-8")
     protected_key_dict["encrypted_key"] = encoded_key
 
     # Try to get the key with the correct password
-    with pytest.raises(ValueError,
-                       match="CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO"):
+    with pytest.raises(ValueError, match="CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO"):
         KeyProtector.verify_password("password-12345", protected_key_dict)
 
 
@@ -85,8 +88,9 @@ def test_backup():
     password = "MySecureBackupPassword!"
     original_private_key = ed25519.Ed25519PrivateKey.generate()
 
-    keystore_dict = KeyProtector.protect_key(password, original_private_key,
-                                             "user-backup")
+    keystore_dict = KeyProtector.protect_key(
+        password, original_private_key, "user-backup"
+    )
 
     backup_json_string = json.dumps(keystore_dict)
 
@@ -97,25 +101,23 @@ def test_backup():
     recovered_key = KeyProtector.verify_password(password, restored_dict)
 
     original_pub_bytes = original_private_key.public_key().public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw
+        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
     )
     recovered_pub_bytes = recovered_key.public_key().public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw
+        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
     )
 
     assert original_pub_bytes == recovered_pub_bytes
 
 
 def test_stolen_keystore_alone():
-    """Verifies that when keystore is stolen, cannot decrypt anything
-    """
+    """Verifies that when keystore is stolen, cannot decrypt anything"""
     password = "UserStrongPassword"
     original_private_key = ed25519.Ed25519PrivateKey.generate()
 
-    stolen_keystore = KeyProtector.protect_key(password, original_private_key,
-                                               "user-victim")
+    stolen_keystore = KeyProtector.protect_key(
+        password, original_private_key, "user-victim"
+    )
 
     raw_stolen_bytes = base64.b64decode(stolen_keystore["encrypted_key"])
 
@@ -125,8 +127,9 @@ def test_stolen_keystore_alone():
     attacker_guesses = ["123456", "password", "admin", "user-victim"]
 
     for guess in attacker_guesses:
-        with pytest.raises(ValueError,
-                           match="""CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO"""):
+        with pytest.raises(
+            ValueError, match="""CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO"""
+        ):
             KeyProtector.verify_password(guess, stolen_keystore)
 
 
@@ -139,7 +142,9 @@ def test_backup_restore_file(tmp_path):
     original_private_key = ed25519.Ed25519PrivateKey.generate()
 
     # Generar keystore
-    keystore_dict = KeyProtector.protect_key(password, original_private_key, "user-backup-io")
+    keystore_dict = KeyProtector.protect_key(
+        password, original_private_key, "user-backup-io"
+    )
 
     # Definir ruta de archivo temporal
     backup_file = tmp_path / "user.keystore"
@@ -158,12 +163,10 @@ def test_backup_restore_file(tmp_path):
     recovered_key = KeyProtector.verify_password(password, restored_dict)
 
     original_pub_bytes = original_private_key.public_key().public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw
+        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
     )
     recovered_pub_bytes = recovered_key.public_key().public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw
+        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
     )
 
     assert original_pub_bytes == recovered_pub_bytes
