@@ -71,13 +71,13 @@ export default function UploadPage() {
 
       const recipientsData = availableUsers
         .filter(u => selectedRecipients.includes(u.id))
-        .map(u => ({ id: u.id, publicKeyBase64: u.publicKeyBase64 }));
+        .map(u => ({ id: u.id, publicKeyPem: u.publicKeyBase64 }));
 
       // ALWAYS add the author to recipients so they can decrypt their own file
       if (!recipientsData.find(r => r.id === currentUser.id)) {
         recipientsData.push({
           id: currentUser.id,
-          publicKeyBase64: currentUser.publicKeys.encryption
+          publicKeyPem: currentUser.publicKeys.encryption
         });
       }
 
@@ -95,7 +95,7 @@ export default function UploadPage() {
         fileName: file.name,
         recipients: recipientsData,
         signerId: currentUser.id,
-        signerPrivateKeyBase64: signerPrivate
+        signerPrivateKeyPem: signerPrivate
       });
 
       // Save to local vault storage

@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import styles from "./page.module.css";
-import { 
-  File, 
-  Download, 
-  Trash2, 
-  MoreVertical, 
-  Shield, 
-  Lock, 
-  User, 
+import {
+  File,
+  Download,
+  Trash2,
+  MoreVertical,
+  Shield,
+  Lock,
+  User,
   Loader2,
   ExternalLink,
   Search,
@@ -30,7 +30,7 @@ export default function FilesPage() {
   useEffect(() => {
     const user = localStorage.getItem("vault_user");
     if (user) setCurrentUser(JSON.parse(user));
-    
+
     loadFiles();
   }, []);
 
@@ -46,13 +46,25 @@ export default function FilesPage() {
     }
   };
 
-  const handleDownloadEncrypted = (file: VaultFile) => {
-    const blob = new Blob([file.encryptedContent], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${file.name}.vault`;
-    a.click();
+  const handleDownloadEncrypted = async (file: VaultFile) => {
+    try {
+      // getAllFiles() returns encryptedContent as Uint8Array(0) for performance.
+      // Fetch the actual content from GET /files/{id} before building the Blob.
+      let content = file.encryptedContent;
+      if (content.length === 0) {
+        content = await (fileRepository as any).getFileContent(file.id);
+      }
+      const blob = new Blob([content], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${file.name}.vault`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error("Encrypted download failed:", error);
+      alert(error.message || "Failed to download encrypted file.");
+    }
   };
 
   const handleDownloadDecrypted = async (file: VaultFile) => {
@@ -75,8 +87,8 @@ export default function FilesPage() {
       const decrypted = await vaultRepository.decrypt({
         vaultFile: encryptedContent,
         userId: currentUser.id,
-        userPrivateKeyBase64: userPrivX,
-        signerPublicKeyBase64: file.signerPublicKeyBase64
+        userPrivateKeyPem: userPrivX,
+        signerPublicKeyPem: file.signerPublicKeyBase64
       });
 
       const blob = new Blob([decrypted], { type: "application/octet-stream" });
@@ -95,8 +107,13 @@ export default function FilesPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this archive permanently?")) return;
-    await fileRepository.deleteFile(id);
-    setFiles(prev => prev.filter(f => f.id !== id));
+    try {
+      await fileRepository.deleteFile(id);
+      setFiles(prev => prev.filter(f => f.id !== id));
+    } catch (error: any) {
+      console.error("Delete failed:", error);
+      alert(error.message || "Failed to delete the file.");
+    }
   };
 
   return (
@@ -174,24 +191,24 @@ export default function FilesPage() {
                           <Loader2 className={styles.spinner} size={18} />
                         ) : (
                           <>
-                            <button 
-                              className={styles.actionBtn} 
+                            <button
+                              className={styles.actionBtn}
                               title="Download Plaintext"
                               onClick={() => handleDownloadDecrypted(file)}
                               disabled={!file.recipients.includes(currentUser?.id)}
                             >
                               <Download size={16} />
                             </button>
-                            <button 
-                              className={styles.actionBtn} 
+                            <button
+                              className={styles.actionBtn}
                               title="Download Encrypted (.vault)"
                               onClick={() => handleDownloadEncrypted(file)}
                             >
                               <Shield size={16} />
                             </button>
                             {file.ownerId === currentUser?.id && (
-                              <button 
-                                className={`${styles.actionBtn} ${styles.deleteBtn}`} 
+                              <button
+                                className={`${styles.actionBtn} ${styles.deleteBtn}`}
                                 title="Delete Archive"
                                 onClick={() => handleDelete(file.id)}
                               >
