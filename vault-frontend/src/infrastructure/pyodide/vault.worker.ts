@@ -1,13 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { loadPyodide, type PyodideInterface } from "pyodide";
 
-let pyodide: PyodideInterface | null = null;
+// Load Pyodide directly from CDN to avoid Webpack bundling issues (IN_NODE error)
+const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/";
+importScripts(`${PYODIDE_CDN}pyodide.js`);
+
+declare function loadPyodide(options?: any): Promise<any>;
+
+let pyodide: any = null;
 
 async function initPyodide() {
   if (pyodide) return pyodide;
 
   pyodide = await loadPyodide({
-    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/",
+    indexURL: PYODIDE_CDN,
   });
 
   // Load cryptography (pre-built package)
