@@ -1,9 +1,9 @@
+import json
 import logging
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from sqlalchemy import select, or_, cast
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import select, or_, text
 from app.modules.files.domain.datasources.files_datasource import FilesDatasource
 from app.modules.files.domain.entities.files import VaultFile
 from app.modules.files.infrastructure.models.files_models import FileModel
@@ -50,16 +50,27 @@ class FilesDatasourceImpl(FilesDatasource):
 
     async def get_all(self, user_id: str) -> List[VaultFile]:
         try:
+            logger.info(f"[GET_FILES] Buscando archivos para user_id='{user_id}'")
+            # Usar text() con bindparams para el operador @> de JSONB.
+            # NOTA: No usar `:uid::jsonb` — el parser de text() de SQLAlchemy
+            # no detecta :uid si va seguido inmediatamente de ::jsonb.
+            # Usar CAST(:uid AS JSONB) (SQL estándar) que sí parsea correctamente.
+            recipient_filter = text(
+                "recipients::jsonb @> CAST(:uid AS JSONB)"
+            ).bindparams(uid=json.dumps([user_id]))
             query = select(FileModel).where(
                 or_(
                     FileModel.owner_id == user_id,
-                    cast(FileModel.recipients, JSONB).op("@>")(
-                        cast(f'["{user_id}"]', JSONB)
-                    ),
+                    recipient_filter,
                 )
             )
             result = await self.session.execute(query)
             files = result.scalars().all()
+            logger.info(f"""[GET_FILES] Encontrados {len(files)} archivo(s)
+                        para user_id='{user_id}'""")
+            for f in files:
+                logger.info(f"""[GET_FILES]   → id={f.id} owner={f.owner_id}
+                            recipients={f.recipients}""")
             return [self._map_to_domain(f) for f in files]
         except SQLAlchemyError as e:
             logger.error(f"Error al obtener archivos para usuario {user_id}: {e}")
@@ -81,6 +92,8 @@ class FilesDatasourceImpl(FilesDatasource):
 
     async def save(self, file: VaultFile) -> VaultFile:
         try:
+            logger.info(f"""[SAVE_FILE] Guardando archivo '{file.name}'
+                        owner={file.owner_id} recipients={file.recipients}""")
             db_file = self._map_to_model(file)
             self.session.add(db_file)
             await self.session.commit()

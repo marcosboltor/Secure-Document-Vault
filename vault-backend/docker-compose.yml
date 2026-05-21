@@ -27,7 +27,7 @@ services:
     environment:
       - PROJECT_NAME=${PROJECT_NAME:-"Secure Document Vault API"}
       - VERSION=${VERSION:-"0.1.0"}
-      - LOG_LEVEL=${LOG_LEVEL:-"INFO"}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - POSTGRES_USER=${POSTGRES_USER:-vault_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vault_pass}
       - POSTGRES_DB=${POSTGRES_DB:-vault_db}

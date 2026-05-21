@@ -34,9 +34,9 @@ Características principales
 * Cifrado híbrido (key wrapping con RSA/ECC) para proteger las claves simétricas de cada archivo mediante las llaves públicas de los destinatarios.
 * Firma digital obligatoria de los documentos para garantizar la autenticidad.
 * Verificación de la firma antes de descifrar el contenido.
-* Gestión de claves con KDF (Argon2 / PBKDF2).
-* Respaldo de las llaves.
-* Mecanismo de recuperación de las llaves.
+* Gestión de claves robusta con PBKDF2 (600,000 iteraciones) y protección mediante KEK.
+* Respaldo y exportación/importación segura de Keystores locales (`.keystore`) mediante operaciones I/O confiables.
+* Mecanismo de recuperación fuera de línea (offline) empleando frases semilla mnemónicas.
 * Capacidad para compartir con múltiples usuarios.
 * Formato: CLI o aplicación local.
 
