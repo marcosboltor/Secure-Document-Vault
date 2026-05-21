@@ -4,26 +4,26 @@ export class MockUserRepository implements IUserRepository {
   private users: User[] = [
     { 
       id: "admin-1", 
-      name: "Eleanor Vance", 
-      email: "e.vance@fortress.sys", 
+      username: "Eleanor Vance", 
+      createdAt: new Date().toISOString(),
       publicKeyBase64: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" 
     },
     { 
       id: "user-1", 
-      name: "Marcus Chen", 
-      email: "m.chen@external.org", 
+      username: "Marcus Chen", 
+      createdAt: new Date().toISOString(),
       publicKeyBase64: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" 
     },
     { 
       id: "user-2", 
-      name: "Sarah Jenkins", 
-      email: "s.jenkins@fortress.sys", 
+      username: "Sarah Jenkins", 
+      createdAt: new Date().toISOString(),
       publicKeyBase64: "SGVsbG8gd29ybGQhISEhISEhISEhISEhISEhISEhISE=" 
     },
     { 
       id: "user-3", 
-      name: "Arthur Dent", 
-      email: "a.dent@galaxy.sys", 
+      username: "Arthur Dent", 
+      createdAt: new Date().toISOString(),
       publicKeyBase64: "TGlmZSwgdGhlIFVuaXZlcnNlLCBhbmQgRXZlcnl0aGluZw==" 
     },
   ];
