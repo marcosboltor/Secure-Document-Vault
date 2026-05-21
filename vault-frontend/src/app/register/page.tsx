@@ -16,7 +16,7 @@ import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.rep
 import { authRepository } from "@/infrastructure/repositories/api-auth.repository";
 import Link from "next/link";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
@@ -36,33 +36,16 @@ export default function RegisterPage() {
     try {
       const newIdentity = await vaultRepository.generateIdentity();
 
+      setIdentity(newIdentity);
+      setIsRegistering(true);
+
       const user = await authRepository.registerUser({
         email: formData.email,
         username: formData.name,
-        public_encryption_key: newIdentity.encryption.public,
-        public_signing_key: newIdentity.signing.public,
+        public_encryption_key: newIdentity.encryption.publicPem,
+        public_signing_key: newIdentity.signing.publicPem,
       });
 
-      setIdentity(newIdentity);
-      // Register with backend using PEM public keys
-      setIsRegistering(true);
-      const res = await fetch(`${API_URL}/api/v1/users/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          username: formData.name,
-          public_encryption_key: newIdentity.encryption.publicPem,
-          public_signing_key: newIdentity.signing.publicPem,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Registration failed. Email may already be in use.");
-      }
-
-      const user = await res.json();
       setInstitutionalId(user.id);
       setStep(2);
     } catch (err: any) {

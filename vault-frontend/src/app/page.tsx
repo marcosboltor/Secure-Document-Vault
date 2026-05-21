@@ -90,8 +90,8 @@ export default function Home() {
         name: identity.name,
         email: identity.email,
         publicKeys: {
-          encryption: identity.identity.encryption.public,
-          signing: identity.identity.signing.public,
+          encryption: identity.identity.encryption.publicPem,
+          signing: identity.identity.signing.publicPem,
         },
       }));
       sessionStorage.setItem("vault_private_keys", JSON.stringify(identity.identity));
@@ -101,8 +101,6 @@ export default function Home() {
       setError(err.message || "Login failed.");
     } finally {
       setIsLoggingIn(false);
-    }
-
     }
   };
 

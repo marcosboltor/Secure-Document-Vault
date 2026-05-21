@@ -1,19 +1,29 @@
 import { VaultFile, IFileRepository } from "@/core/domain/file.repository";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const FILES_URL = `${API_BASE}/api/v1/files`;
 
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("vault_token");
-  if (!token) throw new Error("No auth token found. Please log in again.");
+/**
+ * Lee el access_token almacenado en cookies y devuelve
+ * los headers de autorización necesarios para las peticiones autenticadas.
+ */
+function getAuthHeaders(): HeadersInit {
+  const match = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/);
+  const token = match ? match[1] : "";
   return { Authorization: `Bearer ${token}` };
 }
 
 export class ApiFileRepository implements IFileRepository {
   async saveFile(file: VaultFile): Promise<void> {
-    // Convert Uint8Array to base64 string for the JSON body
-    const base64Content = btoa(String.fromCharCode(...file.encryptedContent));
+    // El backend espera JSON con encrypted_content en base64 (FileUploadRequest)
+    // Usamos Array.from en lugar de spread (...) para evitar RangeError
+    // en archivos grandes (el spread pasa cada byte como argumento individual
+    // y V8 tiene un límite de ~65k argumentos por llamada a función)
+    const encryptedBase64 = btoa(
+      Array.from(file.encryptedContent, (b) => String.fromCharCode(b)).join("")
+    );
 
-    const response = await fetch(`${API_URL}/api/v1/files/`, {
+    const response = await fetch(FILES_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -22,24 +32,25 @@ export class ApiFileRepository implements IFileRepository {
       body: JSON.stringify({
         name: file.name,
         recipients: file.recipients,
-        encrypted_content: base64Content,
+        encrypted_content: encryptedBase64,
       }),
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.detail || "Failed to save file to server");
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Failed to save file to server");
     }
   }
 
   async getAllFiles(): Promise<VaultFile[]> {
-    const response = await fetch(`${API_URL}/api/v1/files/`, {
-      headers: getAuthHeaders(),
+    const response = await fetch(FILES_URL, {
+      headers: { ...getAuthHeaders() },
     });
     if (!response.ok) throw new Error("Failed to fetch files from server");
 
     const data = await response.json();
 
+    // Mapear snake_case del backend → camelCase del frontend
     return data.map((f: any) => ({
       id: f.id,
       name: f.name,
@@ -48,21 +59,24 @@ export class ApiFileRepository implements IFileRepository {
       recipients: f.recipients ?? [],
       createdAt: f.created_at,
       size: f.size ?? 0,
-      encryptedContent: new Uint8Array(0), // lazy-loaded on decrypt
+      encryptedContent: new Uint8Array(0), // Content is lazy-loaded
       signerPublicKeyBase64: f.signer_public_key_base64 ?? "",
     }));
   }
 
   async deleteFile(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/api/v1/files/${id}`, {
+    const response = await fetch(`${FILES_URL}/${id}`, {
       method: "DELETE",
-      headers: getAuthHeaders(),
+      headers: { ...getAuthHeaders() },
     });
-    if (!response.ok) throw new Error("Failed to delete file");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Failed to delete file");
+    }
   }
 
   async updatePermissions(id: string, recipients: string[]): Promise<void> {
-    const response = await fetch(`${API_URL}/api/v1/files/${id}/permissions`, {
+    const response = await fetch(`${FILES_URL}/${id}/permissions`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -74,19 +88,20 @@ export class ApiFileRepository implements IFileRepository {
   }
 
   async getFileContent(id: string): Promise<Uint8Array> {
-    const response = await fetch(`${API_URL}/api/v1/files/${id}`, {
-      headers: getAuthHeaders(),
+    // El backend devuelve FileDetailResponse con encrypted_content en base64
+    const response = await fetch(`${FILES_URL}/${id}`, {
+      headers: { ...getAuthHeaders() },
     });
     if (!response.ok) throw new Error("Failed to fetch file content");
 
     const data = await response.json();
-    if (!data.encrypted_content) throw new Error("No encrypted content in response");
+    if (!data.encrypted_content) return new Uint8Array(0);
 
-    // Decode base64 to Uint8Array
-    const binary = atob(data.encrypted_content);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+    // Decodificar base64 → Uint8Array
+    const binaryStr = atob(data.encrypted_content);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
     }
     return bytes;
   }

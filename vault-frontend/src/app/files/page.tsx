@@ -59,14 +59,25 @@ export default function FilesPage() {
     }
   };
 
-  const handleDownloadEncrypted = (file: VaultFile) => {
-    const blob = new Blob([new Uint8Array(file.encryptedContent)], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${file.name}.vault`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownloadEncrypted = async (file: VaultFile) => {
+    try {
+      // getAllFiles() returns encryptedContent as Uint8Array(0) for performance.
+      // Fetch the actual content from GET /files/{id} before building the Blob.
+      let content = file.encryptedContent;
+      if (content.length === 0) {
+        content = await fileRepository.getFileContent(file.id);
+      }
+      const blob = new Blob([content], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${file.name}.vault`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error("Encrypted download failed:", error);
+      addToast("error", error.message || "Failed to download encrypted file.");
+    }
   };
 
   const handleDownloadDecrypted = async (file: VaultFile) => {
@@ -77,7 +88,7 @@ export default function FilesPage() {
       // Lazy-load encrypted content if not already fetched
       let encryptedContent = file.encryptedContent;
       if (encryptedContent.length === 0) {
-        encryptedContent = await (fileRepository as any).getFileContent(file.id);
+        encryptedContent = await fileRepository.getFileContent(file.id);
       }
 
       const privateKeys = JSON.parse(sessionStorage.getItem("vault_private_keys") || "{}");
@@ -87,8 +98,8 @@ export default function FilesPage() {
       const decrypted = await vaultRepository.decrypt({
         vaultFile: encryptedContent,
         userId: currentUser.id,
-        userPrivateKeyBase64: userPrivX,
-        signerPublicKeyBase64: file.signerPublicKeyBase64,
+        userPrivateKeyPem: userPrivX,
+        signerPublicKeyPem: file.signerPublicKeyBase64,
       });
 
       const blob = new Blob([new Uint8Array(decrypted)], { type: "application/octet-stream" });
