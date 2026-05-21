@@ -12,6 +12,7 @@ class VaultFile:
     recipients: List[str]  # Lista de IDs de usuarios con acceso
     created_at: datetime
     signer_public_key_base64: str
+    size: int = 0
     encrypted_content: Optional[bytes] = None
 
     def is_owner(self, user_id: str) -> bool:

@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   IVaultRepository,
   EncryptionParams,
-  DecryptionParams
+  DecryptionParams,
+  IdentityKeys,
 } from "@/core/domain/vault.repository";
 
 export class PyodideVaultRepository implements IVaultRepository {
@@ -17,7 +19,6 @@ export class PyodideVaultRepository implements IVaultRepository {
 
   private async init(): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      // Initialize worker
       this.worker = new Worker(new URL("../pyodide/vault.worker.ts", import.meta.url));
 
       this.worker.onmessage = (e) => {
@@ -61,40 +62,45 @@ export class PyodideVaultRepository implements IVaultRepository {
 
   async encrypt(params: EncryptionParams): Promise<Uint8Array> {
     await this.isReady();
-    return this.sendRequest("ENCRYPT", {
-      file: params.file,
-      fileName: params.fileName,
-      recipients: params.recipients,
-      signerId: params.signerId,
-      signerKeystoreJson: params.signerKeystoreJson,
-      password: params.password,
-    });
+    return this.sendRequest("ENCRYPT", params);
   }
 
   async decrypt(params: DecryptionParams): Promise<Uint8Array> {
     await this.isReady();
-    return this.sendRequest("DECRYPT", {
-      vaultFile: params.vaultFile,
-      userId: params.userId,
-      userKeystoreJson: params.userKeystoreJson,
-      password: params.password,
-      signerPublicKeyPem: params.signerPublicKeyPem,
-    });
+    return this.sendRequest("DECRYPT", params);
   }
 
-  async generateIdentity(): Promise<any> {
+  async generateIdentity(): Promise<IdentityKeys> {
     await this.isReady();
     return this.sendRequest("GENERATE_IDENTITY", {});
   }
 
-  async protectKeys(password: string, privXB64: string, privEdB64: string, userId: string): Promise<any> {
+  async protectKeys(
+    password: string,
+    privXB64: string,
+    privEdB64: string,
+    userId: string
+  ): Promise<string> {
     await this.isReady();
-    return this.sendRequest("PROTECT_KEYS", { password, privXB64, privEdB64, userId });
+    return this.sendRequest("PROTECT_KEYS", {
+      password,
+      privXB64,
+      privEdB64,
+      userId,
+    });
   }
 
-  async signChallengeWithKeystore(challenge: string, signKeystoreJson: string, password: string): Promise<string> {
+  async signChallengeWithKeystore(
+    challenge: string,
+    signKeystoreJson: string,
+    password: string
+  ): Promise<string> {
     await this.isReady();
-    return this.sendRequest("SIGN_CHALLENGE_KEYSTORE", { challenge, signKeystoreJson, password }) as Promise<string>;
+    return this.sendRequest("SIGN_CHALLENGE_KEYSTORE", {
+      challenge,
+      signKeystoreJson,
+      password,
+    }) as Promise<string>;
   }
 }
 

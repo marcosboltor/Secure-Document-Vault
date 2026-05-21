@@ -70,6 +70,7 @@ async def get_file_details(
         recipients=file.recipients,
         created_at=file.created_at,
         signer_public_key_base64=file.signer_public_key_base64,
+        size=file.size,
         encrypted_content=encrypted_b64,
     )
 

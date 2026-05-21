@@ -256,8 +256,6 @@ export default function UploadPage() {
               <div className={styles.paramItem}>
                 <label>SET PERMISSION LEVEL</label>
                 <div className={styles.toggleGroup}>
-                  <button>Public</button>
-                  <button>Private</button>
                   <button className={styles.activeToggle}><Lock size={14} /> Encrypted</button>
                 </div>
                 <div className={styles.hint}>

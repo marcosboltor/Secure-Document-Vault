@@ -216,18 +216,6 @@ export default function Home() {
           </button>
         </form>
 
-        <div className={styles.divider}>
-          <span>OR SECURE WITH</span>
-        </div>
-
-        <div className={styles.secondaryActions}>
-          <button className={styles.biometricButton} disabled title="Coming soon">
-            <Fingerprint size={20} /> Biometric
-          </button>
-          <button className={styles.biometricButton} disabled title="Coming soon">
-            <Lock size={20} /> Hardware Key
-          </button>
-        </div>
 
         <p className={styles.footerText}>
           First time? <span onClick={() => router.push("/register")} className={styles.link}>Initialize Cryptographic Identity</span>

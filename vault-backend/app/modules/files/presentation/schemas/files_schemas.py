@@ -13,6 +13,7 @@ class FileListResponse(BaseModel):
     recipients: List[str]
     created_at: datetime
     signer_public_key_base64: str
+    size: int = 0
 
     class Config:
         from_attributes = True
@@ -28,6 +29,7 @@ class FileDetailResponse(BaseModel):
     recipients: List[str]
     created_at: datetime
     signer_public_key_base64: str
+    size: int = 0
     encrypted_content: Optional[str] = None
 
     class Config:

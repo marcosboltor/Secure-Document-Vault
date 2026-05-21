@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./Sidebar.module.css";
-import { 
-  Files, 
-  Upload as UploadIcon, 
-  ShieldCheck, 
-  FileText, 
-  LogOut 
+import {
+  Files,
+  Upload as UploadIcon,
+  ShieldCheck,
+  FileText,
+  LogOut,
+  Key
 } from "lucide-react";
 import Image from "next/image";
 
@@ -18,6 +19,7 @@ export default function Sidebar() {
   const links = [
     { name: "Files", icon: <Files size={18} />, href: "/files" },
     { name: "Upload", icon: <UploadIcon size={18} />, href: "/upload" },
+    { name: "Keys", icon: <Key size={18} />, href: "/keys" },
     { name: "Admin", icon: <ShieldCheck size={18} />, href: "/admin" },
   ];
 
@@ -25,11 +27,11 @@ export default function Sidebar() {
     <aside className={styles.sidebar}>
       <div className={styles.logoSection}>
         <div className={styles.logoWrapper}>
-          <Image 
-            src="/logo.png" 
-            alt="Vault Logo" 
-            width={160} 
-            height={160} 
+          <Image
+            src="/logo.png"
+            alt="Vault Logo"
+            width={160}
+            height={160}
             className={styles.logoImg}
             priority
             quality={100}
@@ -43,8 +45,8 @@ export default function Sidebar() {
 
       <nav className={styles.nav}>
         {links.map((link) => (
-          <Link 
-            key={link.href} 
+          <Link
+            key={link.href}
             href={link.href}
             className={`${styles.link} ${pathname === link.href ? styles.active : ""}`}
           >
@@ -55,10 +57,6 @@ export default function Sidebar() {
       </nav>
 
       <div className={styles.bottomNav}>
-        <Link href="/audit" className={styles.link}>
-          <FileText size={18} />
-          Audit Logs
-        </Link>
         <Link href="/" className={styles.link}>
           <LogOut size={18} />
           Logout
