@@ -20,6 +20,7 @@ import {
 import { fileRepository } from "@/infrastructure/repositories/api-file.repository";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
 import { VaultFile } from "@/core/domain/file.repository";
+import PasswordModal from "@/app/components/PasswordModal/PasswordModal";
 
 interface Toast {
   id: string;
@@ -33,6 +34,12 @@ export default function FilesPage() {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordModalLoading, setPasswordModalLoading] = useState(false);
+  const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
+  const [pendingDecryptFile, setPendingDecryptFile] = useState<VaultFile | null>(null);
 
   const addToast = (type: Toast["type"], message: string) => {
     const id = Math.random().toString(36).substring(7);
@@ -61,13 +68,11 @@ export default function FilesPage() {
 
   const handleDownloadEncrypted = async (file: VaultFile) => {
     try {
-      // getAllFiles() returns encryptedContent as Uint8Array(0) for performance.
-      // Fetch the actual content from GET /files/{id} before building the Blob.
       let content = file.encryptedContent;
       if (content.length === 0) {
         content = await fileRepository.getFileContent(file.id);
       }
-      const blob = new Blob([content], { type: "application/octet-stream" });
+      const blob = new Blob([new Uint8Array(content)], { type: "application/octet-stream" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -80,51 +85,78 @@ export default function FilesPage() {
     }
   };
 
-  const handleDownloadDecrypted = async (file: VaultFile) => {
+  // Step 1: User clicks decrypt → show password modal
+  const handleDownloadDecrypted = (file: VaultFile) => {
     if (!currentUser) return;
-    setIsProcessing(file.id);
+    setPendingDecryptFile(file);
+    setPasswordModalError(null);
+    setShowPasswordModal(true);
+  };
+
+  // Step 2: User submits password → perform decryption
+  const handlePasswordSubmit = async (password: string) => {
+    if (!pendingDecryptFile || !currentUser) return;
+
+    setPasswordModalLoading(true);
+    setPasswordModalError(null);
 
     try {
       // Lazy-load encrypted content if not already fetched
-      let encryptedContent = file.encryptedContent;
+      let encryptedContent = pendingDecryptFile.encryptedContent;
       if (encryptedContent.length === 0) {
-        encryptedContent = await fileRepository.getFileContent(file.id);
+        encryptedContent = await fileRepository.getFileContent(pendingDecryptFile.id);
       }
 
-      const privateKeys = JSON.parse(sessionStorage.getItem("vault_private_keys") || "{}");
-      const userPrivX = privateKeys.encryption?.private;
-      if (!userPrivX) throw new Error("Private key not found in session. Please log in again.");
+      // Get encrypted keystore from session (safe — it's password-encrypted)
+      const keystoresStr = sessionStorage.getItem("vault_keystores");
+      if (!keystoresStr) throw new Error("Session expired. Please log in again.");
+      const keystores = JSON.parse(keystoresStr);
+      const encKeystoreJson = JSON.stringify(keystores.encryption);
 
       const decrypted = await vaultRepository.decrypt({
         vaultFile: encryptedContent,
         userId: currentUser.id,
-        userPrivateKeyPem: userPrivX,
-        signerPublicKeyPem: file.signerPublicKeyBase64,
+        userKeystoreJson: encKeystoreJson,
+        password: password,
+        signerPublicKeyPem: pendingDecryptFile.signerPublicKeyBase64,
       });
+
+      // Success — close modal and download
+      setShowPasswordModal(false);
+      setPendingDecryptFile(null);
 
       const blob = new Blob([new Uint8Array(decrypted)], { type: "application/octet-stream" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = file.name;
+      a.download = pendingDecryptFile.name;
       a.click();
       URL.revokeObjectURL(url);
+
+      addToast("success", `${pendingDecryptFile.name} decrypted successfully.`);
     } catch (error: any) {
       console.error("Decryption failed:", error);
-      const isIntegrityError =
-        error.message?.includes("IntegrityError") ||
-        error.message?.includes("integrity") ||
-        error.message?.includes("tag") ||
-        error.message?.includes("signature");
-      addToast(
-        "error",
-        isIntegrityError
-          ? "Access Denied or Corrupted File — integrity verification failed."
-          : error.message || "Decryption failed. You might not have access to this file."
-      );
+      const msg = error.message || "";
+
+      if (msg.includes("CONTRASEÑA INCORRECTA") || msg.includes("KEYSTORE CORRUPTO")) {
+        setPasswordModalError("Incorrect password. Please try again.");
+      } else if (msg.includes("IntegrityError") || msg.includes("integrity") || msg.includes("tag") || msg.includes("signature")) {
+        setPasswordModalError("Integrity verification failed — file may be corrupted.");
+        setShowPasswordModal(false);
+        addToast("error", "Access Denied or Corrupted File — integrity verification failed.");
+      } else {
+        setPasswordModalError(msg || "Decryption failed.");
+      }
     } finally {
-      setIsProcessing(null);
+      setPasswordModalLoading(false);
+      // Password is cleared by the modal component on close
     }
+  };
+
+  const handlePasswordCancel = () => {
+    setShowPasswordModal(false);
+    setPendingDecryptFile(null);
+    setPasswordModalError(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -139,6 +171,17 @@ export default function FilesPage() {
 
   return (
     <div className={styles.container}>
+      {/* Password Modal for decryption */}
+      <PasswordModal
+        isOpen={showPasswordModal}
+        title="Decrypt Archive"
+        description={`Enter your vault password to unlock your private key and decrypt "${pendingDecryptFile?.name || ""}".`}
+        onSubmit={handlePasswordSubmit}
+        onCancel={handlePasswordCancel}
+        isLoading={passwordModalLoading}
+        error={passwordModalError}
+      />
+
       {/* Toast notifications */}
       <div className={styles.toastContainer}>
         {toasts.map((toast) => (
