@@ -79,8 +79,8 @@ export default function AdminPage() {
                   <Users size={18} />
                 </div>
                 <div>
-                  <div className={styles.userName}>{user.name}</div>
-                  <div className={styles.userEmail}>{user.email}</div>
+                  <div className={styles.userName}>{user.username}</div>
+                  <div className={styles.userEmail}>{user.id.substring(0, 12)}...</div>
                 </div>
               </div>
               <div className={styles.userRole}>

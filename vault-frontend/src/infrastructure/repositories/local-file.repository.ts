@@ -71,6 +71,25 @@ export class LocalFileRepository implements IFileRepository {
       getRequest.onerror = () => reject(getRequest.error);
     });
   }
+
+  async getFileContent(id: string): Promise<Uint8Array> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(this.storeName, "readonly");
+      const store = transaction.objectStore(this.storeName);
+      const request = store.get(id);
+      
+      request.onsuccess = () => {
+        const file = request.result;
+        if (file) {
+          resolve(file.encryptedContent);
+        } else {
+          reject(new Error("File not found"));
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
 }
 
 export const fileRepository = new LocalFileRepository();

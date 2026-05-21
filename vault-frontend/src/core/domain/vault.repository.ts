@@ -8,13 +8,15 @@ export interface EncryptionParams {
   fileName: string;
   recipients: RecipientInfo[];
   signerId: string;
-  signerPrivateKeyPem: string; // Ed25519 private key in PEM
+  signerKeystoreJson: string; // Encrypted signing keystore JSON
+  password: string;           // Password to unlock the keystore
 }
 
 export interface DecryptionParams {
   vaultFile: Uint8Array;
   userId: string;
-  userPrivateKeyPem: string; // X25519 private key in PEM
+  userKeystoreJson: string;   // Encrypted encryption keystore JSON
+  password: string;           // Password to unlock the keystore
   signerPublicKeyPem: string; // Ed25519 public key in PEM
 }
 
@@ -22,6 +24,7 @@ export interface IVaultRepository {
   encrypt(params: EncryptionParams): Promise<Uint8Array>;
   decrypt(params: DecryptionParams): Promise<Uint8Array>;
   generateIdentity(): Promise<any>;
-  signChallenge(challenge: string, signerPrivateKeyBase64: string): Promise<string>;
+  protectKeys(password: string, privXB64: string, privEdB64: string, userId: string): Promise<any>;
+  signChallengeWithKeystore(challenge: string, signKeystoreJson: string, password: string): Promise<string>;
   isReady(): Promise<boolean>;
 }

@@ -11,6 +11,7 @@ import {
   ArrowRight,
   ShieldAlert,
   AlertCircle,
+  Lock,
 } from "lucide-react";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
 import { authRepository } from "@/infrastructure/repositories/api-auth.repository";
@@ -26,34 +27,74 @@ export default function RegisterPage() {
   const [institutionalId, setInstitutionalId] = useState("");
   const [backendId, setBackendId] = useState<string>("");
   const [formData, setFormData] = useState({ name: "", email: "" });
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsGenerating(true);
     setError(null);
 
+    // Validate passwords
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setIsGenerating(true);
+
     try {
-      const newIdentity = await vaultRepository.generateIdentity();
+      // 1. Generate raw keys in worker
+      const rawIdentity = await vaultRepository.generateIdentity();
 
-      setIdentity(newIdentity);
+      // 2. Encrypt private keys with password using KeyProtector
       setIsRegistering(true);
+      const keystoresJson = await vaultRepository.protectKeys(
+        password,
+        rawIdentity.encryption.private,
+        rawIdentity.signing.private,
+        formData.name
+      );
+      const keystores = JSON.parse(keystoresJson);
 
+      // 3. Build the protected identity (no raw private keys)
+      const protectedIdentity = {
+        encryption: {
+          keystore: keystores.encryption_keystore,
+          public: rawIdentity.encryption.public,
+          publicPem: rawIdentity.encryption.publicPem,
+        },
+        signing: {
+          keystore: keystores.signing_keystore,
+          public: rawIdentity.signing.public,
+          publicPem: rawIdentity.signing.publicPem,
+        },
+      };
+
+      setIdentity(protectedIdentity);
+
+      // 4. Register public keys with backend
       const user = await authRepository.registerUser({
         email: formData.email,
         username: formData.name,
-        public_encryption_key: newIdentity.encryption.publicPem,
-        public_signing_key: newIdentity.signing.publicPem,
+        public_encryption_key: rawIdentity.encryption.publicPem,
+        public_signing_key: rawIdentity.signing.publicPem,
       });
 
       setInstitutionalId(user.id);
       setStep(2);
     } catch (err: any) {
       setError(err.message || "Failed to generate identity.");
-
     } finally {
       setIsGenerating(false);
       setIsRegistering(false);
+      // Clear password fields — password is no longer needed
+      setPassword("");
+      setConfirmPassword("");
     }
   };
 
@@ -112,9 +153,34 @@ export default function RegisterPage() {
               />
             </div>
 
+            <div className={styles.inputGroup}>
+              <label><Lock size={12} /> VAULT PASSWORD</label>
+              <input
+                type="password"
+                required
+                placeholder="Min. 8 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </div>
+            <div className={styles.inputGroup}>
+              <label><Lock size={12} /> CONFIRM PASSWORD</label>
+              <input
+                type="password"
+                required
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </div>
+
             <div className={styles.infoBox}>
               <ShieldAlert size={16} />
-              <p>Generation occurs locally. Your private keys will never be transmitted to the server during this process.</p>
+              <p>Your private keys will be encrypted with this password using PBKDF2 (600K iterations) + ChaCha20-Poly1305. The password is never transmitted or stored — only you can unlock your keys.</p>
             </div>
 
             {error && (
@@ -125,10 +191,10 @@ export default function RegisterPage() {
             )}
 
             <button type="submit" className={styles.primaryBtn} disabled={isGenerating || isRegistering}>
-              {isGenerating ? (
+              {isGenerating && !isRegistering ? (
                 <><Loader2 className={styles.spinner} size={18} /> GENERATING KEYS...</>
               ) : isRegistering ? (
-                <><Loader2 className={styles.spinner} size={18} /> REGISTERING...</>
+                <><Loader2 className={styles.spinner} size={18} /> ENCRYPTING & REGISTERING...</>
               ) : (
                 <><Key size={18} /> INITIALIZE IDENTITY</>
               )}
@@ -146,7 +212,7 @@ export default function RegisterPage() {
               <CheckCircle2 size={48} />
             </div>
             <h2>Identity Core Generated</h2>
-            <p>Your cryptographic pairs have been established. You must download and secure your identity file to access the vault.</p>
+            <p>Your cryptographic pairs have been established and encrypted with your password. You must download and secure your identity file to access the vault.</p>
 
             <div className={styles.keysPreview}>
               <div className={styles.keyItem}>
@@ -157,6 +223,10 @@ export default function RegisterPage() {
                 <label>SIGNING PUBLIC KEY (ED25519)</label>
                 <code>{identity.signing.public.substring(0, 32)}...</code>
               </div>
+              <div className={styles.keyItem}>
+                <label>KEY PROTECTION</label>
+                <code>PBKDF2-HMAC-SHA256 (600K iterations) + ChaCha20-Poly1305</code>
+              </div>
             </div>
 
             <button className={styles.downloadBtn} onClick={downloadKeyFile}>
@@ -164,7 +234,7 @@ export default function RegisterPage() {
             </button>
 
             <div className={styles.warningBox}>
-              <strong>CRITICAL:</strong> Loss of this file results in permanent loss of access to all encrypted archives. No recovery path exists.
+              <strong>CRITICAL:</strong> Loss of this file or your password results in permanent loss of access to all encrypted archives. No recovery path exists.
             </div>
 
             <Link href="/" className={styles.finishBtn}>
