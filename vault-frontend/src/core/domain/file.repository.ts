@@ -15,4 +15,5 @@ export interface IFileRepository {
   getAllFiles(): Promise<VaultFile[]>;
   deleteFile(id: string): Promise<void>;
   updatePermissions(id: string, recipients: string[]): Promise<void>;
+  getFileContent(id: string): Promise<Uint8Array>;
 }

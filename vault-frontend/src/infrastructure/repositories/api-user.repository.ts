@@ -23,19 +23,15 @@ export class ApiUserRepository implements IUserRepository {
     const data = await response.json();
 
     // Mapear UserPublicResponse del backend → User del frontend
-    // Backend: { id, username, public_encryption_key, created_at }
-    // Frontend: { id, name, email, publicKeyBase64 }
     return data.map((u: any) => ({
       id: u.id,
-      name: u.username,
-      email: "", // El backend no expone el email en GET /users/
+      username: u.username,
       publicKeyBase64: u.public_encryption_key,
+      createdAt: u.created_at,
     }));
   }
 
   async getUserById(id: string): Promise<User | null> {
-    // Nota: GET /users/{id} no existe en el backend actual.
-    // Se mantiene por compatibilidad con la interfaz IUserRepository.
     const response = await fetch(`${USERS_URL}/${id}`, {
       headers: { ...getAuthHeaders() },
     });
@@ -45,9 +41,9 @@ export class ApiUserRepository implements IUserRepository {
     const u = await response.json();
     return {
       id: u.id,
-      name: u.username,
-      email: "",
+      username: u.username,
       publicKeyBase64: u.public_encryption_key,
+      createdAt: u.created_at,
     };
   }
 }

@@ -6,31 +6,43 @@ import {
   File,
   Download,
   Trash2,
-  MoreVertical,
   Shield,
   Lock,
   User,
   Loader2,
-  ExternalLink,
   Search,
   Settings2,
   CheckCircle,
-  XCircle
+  XCircle,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { fileRepository } from "@/infrastructure/repositories/api-file.repository";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
 import { VaultFile } from "@/core/domain/file.repository";
+
+interface Toast {
+  id: string;
+  type: "error" | "success";
+  message: string;
+}
 
 export default function FilesPage() {
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (type: Toast["type"], message: string) => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
+  };
 
   useEffect(() => {
     const user = localStorage.getItem("vault_user");
     if (user) setCurrentUser(JSON.parse(user));
-
     loadFiles();
   }, []);
 
@@ -41,6 +53,7 @@ export default function FilesPage() {
       setFiles(allFiles.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (error) {
       console.error("Failed to load files:", error);
+      addToast("error", "Failed to load files from vault.");
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +65,7 @@ export default function FilesPage() {
       // Fetch the actual content from GET /files/{id} before building the Blob.
       let content = file.encryptedContent;
       if (content.length === 0) {
-        content = await (fileRepository as any).getFileContent(file.id);
+        content = await fileRepository.getFileContent(file.id);
       }
       const blob = new Blob([content], { type: "application/octet-stream" });
       const url = URL.createObjectURL(blob);
@@ -63,7 +76,7 @@ export default function FilesPage() {
       URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error("Encrypted download failed:", error);
-      alert(error.message || "Failed to download encrypted file.");
+      addToast("error", error.message || "Failed to download encrypted file.");
     }
   };
 
@@ -72,34 +85,43 @@ export default function FilesPage() {
     setIsProcessing(file.id);
 
     try {
-      // Lazy-load content if it's empty
+      // Lazy-load encrypted content if not already fetched
       let encryptedContent = file.encryptedContent;
       if (encryptedContent.length === 0) {
-        encryptedContent = await (fileRepository as any).getFileContent(file.id);
+        encryptedContent = await fileRepository.getFileContent(file.id);
       }
 
-      // Get private keys from session
       const privateKeys = JSON.parse(sessionStorage.getItem("vault_private_keys") || "{}");
       const userPrivX = privateKeys.encryption?.private;
-
       if (!userPrivX) throw new Error("Private key not found in session. Please log in again.");
 
       const decrypted = await vaultRepository.decrypt({
         vaultFile: encryptedContent,
         userId: currentUser.id,
         userPrivateKeyPem: userPrivX,
-        signerPublicKeyPem: file.signerPublicKeyBase64
+        signerPublicKeyPem: file.signerPublicKeyBase64,
       });
 
-      const blob = new Blob([decrypted], { type: "application/octet-stream" });
+      const blob = new Blob([new Uint8Array(decrypted)], { type: "application/octet-stream" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = file.name;
       a.click();
+      URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error("Decryption failed:", error);
-      alert(error.message || "Decryption failed. You might not have access to this file.");
+      const isIntegrityError =
+        error.message?.includes("IntegrityError") ||
+        error.message?.includes("integrity") ||
+        error.message?.includes("tag") ||
+        error.message?.includes("signature");
+      addToast(
+        "error",
+        isIntegrityError
+          ? "Access Denied or Corrupted File — integrity verification failed."
+          : error.message || "Decryption failed. You might not have access to this file."
+      );
     } finally {
       setIsProcessing(null);
     }
@@ -109,15 +131,27 @@ export default function FilesPage() {
     if (!confirm("Are you sure you want to delete this archive permanently?")) return;
     try {
       await fileRepository.deleteFile(id);
-      setFiles(prev => prev.filter(f => f.id !== id));
-    } catch (error: any) {
-      console.error("Delete failed:", error);
-      alert(error.message || "Failed to delete the file.");
+      setFiles((prev) => prev.filter((f) => f.id !== id));
+    } catch {
+      addToast("error", "Failed to delete file.");
     }
   };
 
   return (
     <div className={styles.container}>
+      {/* Toast notifications */}
+      <div className={styles.toastContainer}>
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`${styles.toast} ${styles[toast.type]}`}>
+            <AlertTriangle size={16} />
+            <span>{toast.message}</span>
+            <button onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}>
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <div className={styles.header}>
         <div className={styles.titleSection}>
           <h1 className={styles.title}>Secure Archive</h1>
@@ -174,7 +208,7 @@ export default function FilesPage() {
                       </div>
                     </td>
                     <td>{new Date(file.createdAt).toLocaleDateString()}</td>
-                    <td>{(file.size / 1024).toFixed(1)} KB</td>
+                    <td>{file.size > 0 ? `${(file.size / 1024).toFixed(1)} KB` : "—"}</td>
                     <td>
                       <div className={styles.accessCell}>
                         {file.recipients.includes(currentUser?.id) ? (

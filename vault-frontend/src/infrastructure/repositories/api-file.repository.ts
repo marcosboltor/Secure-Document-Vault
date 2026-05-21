@@ -56,11 +56,11 @@ export class ApiFileRepository implements IFileRepository {
       name: f.name,
       ownerId: f.owner_id,
       ownerName: f.owner_name,
-      recipients: f.recipients,
+      recipients: f.recipients ?? [],
       createdAt: f.created_at,
-      size: 0, // El listado no incluye tamaño; se calcula al descargar
+      size: f.size ?? 0,
       encryptedContent: new Uint8Array(0), // Content is lazy-loaded
-      signerPublicKeyBase64: f.signer_public_key_base64,
+      signerPublicKeyBase64: f.signer_public_key_base64 ?? "",
     }));
   }
 

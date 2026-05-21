@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Fingerprint, Lock, Upload, CheckCircle2, ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
@@ -8,13 +8,20 @@ import styles from "./page.module.css";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
 import { authRepository } from "@/infrastructure/repositories/api-auth.repository";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export default function Home() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [identity, setIdentity] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isEngineReady, setIsEngineReady] = useState(false);
+
+  useEffect(() => {
+    vaultRepository.isReady().then(() => setIsEngineReady(true));
+  }, []);
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -30,7 +37,7 @@ export default function Home() {
         } else {
           setError("Invalid identity file structure.");
         }
-      } catch (err) {
+      } catch {
         setError("Failed to parse identity file.");
       }
     };
@@ -43,43 +50,57 @@ export default function Home() {
       setError("Please upload your identity file to initialize session.");
       return;
     }
-    
-    setIsLoading(true);
+    setIsLoggingIn(true);
     setError(null);
+
     try {
+      const userId = identity.institutionalId;
+      const signerPrivateKey = identity.identity.signing.private;
+
       const challenge = crypto.randomUUID();
-      const privateKeyPem = identity.identity.signing.private;
-      
-      const signature = await vaultRepository.signChallenge(challenge, privateKeyPem);
-      
-      const tokens = await authRepository.loginUser({
-        user_id: identity.institutionalId,
-        challenge,
-        signature
+      const signature = await vaultRepository.signChallenge(challenge, signerPrivateKey);
+
+      const loginRes = await fetch(`${API_URL}/api/v1/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          challenge,
+          signature,
+        }),
       });
 
-      // Store tokens in cookies
-      document.cookie = `access_token=${tokens.access_token}; path=/; max-age=3600; samesite=strict`;
-      document.cookie = `refresh_token=${tokens.refresh_token}; path=/; max-age=86400; samesite=strict`;
+      if (!loginRes.ok) {
+        const err = await loginRes.json().catch(() => ({}));
+        throw new Error(err.detail || "Authentication failed. Check your identity file.");
+      }
 
+      const { access_token, refresh_token } = await loginRes.json();
+
+      // Store tokens in cookies for middleware compatibility
+      document.cookie = `access_token=${access_token}; path=/; max-age=3600; samesite=strict`;
+      document.cookie = `refresh_token=${refresh_token}; path=/; max-age=86400; samesite=strict`;
+
+      // Also store in localStorage for Authorization headers
+      localStorage.setItem("vault_token", access_token);
+      localStorage.setItem("vault_refresh_token", refresh_token);
       localStorage.setItem("vault_user", JSON.stringify({
-        id: identity.institutionalId,
+        id: userId,
+        username: identity.name,
         name: identity.name,
         email: identity.email,
         publicKeys: {
-          encryption: identity.identity.encryption.public,
-          signing: identity.identity.signing.public
-        }
+          encryption: identity.identity.encryption.publicPem,
+          signing: identity.identity.signing.publicPem,
+        },
       }));
-      
       sessionStorage.setItem("vault_private_keys", JSON.stringify(identity.identity));
-      
+
       router.push("/files");
     } catch (err: any) {
-      console.error("Login failed:", err);
-      setError("Authentication failed: " + (err.message || "Invalid identity core."));
+      setError(err.message || "Login failed.");
     } finally {
-      setIsLoading(false);
+      setIsLoggingIn(false);
     }
   };
 
@@ -107,16 +128,16 @@ export default function Home() {
         <form className={styles.form} onSubmit={handleLogin}>
           <div className={styles.inputGroup}>
             <label>Cryptographic Identity File</label>
-            <div 
+            <div
               className={`${styles.fileUploadZone} ${identity ? styles.fileUploaded : ""}`}
               onClick={() => fileInputRef.current?.click()}
             >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
                 accept=".json"
-                hidden 
+                hidden
               />
               {identity ? (
                 <div className={styles.fileSuccess}>
@@ -139,14 +160,17 @@ export default function Home() {
             </div>
           )}
 
-          <button type="submit" className={styles.primaryButton} disabled={!identity || isLoading}>
-            {isLoading ? (
-              <><Loader2 className={styles.spinner || "spinner"} size={18} /> AUTHENTICATING...</>
+          <button type="submit" className={styles.primaryButton} disabled={!identity || isLoggingIn || !isEngineReady}>
+            {!isEngineReady ? (
+              <><Loader2 size={18} className={styles.spinner} /> INITIALIZING ENGINE...</>
+            ) : isLoggingIn ? (
+              <><Loader2 size={18} className={styles.spinner} /> AUTHENTICATING...</>
             ) : identity ? (
               <><ShieldCheck size={18} /> INITIALIZE ACCESS <ArrowRight size={18} /></>
             ) : (
               "UPLOAD CORE TO START"
             )}
+
           </button>
         </form>
 
