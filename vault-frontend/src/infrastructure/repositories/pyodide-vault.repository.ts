@@ -74,9 +74,9 @@ export class PyodideVaultRepository implements IVaultRepository {
     return this.sendRequest("GENERATE_IDENTITY", {});
   }
 
-  async signChallenge(challenge: string, privateKeyPem: string): Promise<string> {
+  async signChallenge(challenge: string, signerPrivateKeyBase64: string): Promise<string> {
     await this.isReady();
-    return this.sendRequest("SIGN_CHALLENGE", { challenge, privateKeyPem }) as unknown as Promise<string>;
+    return this.sendRequest("SIGN_CHALLENGE", { challenge, signerPrivateKeyBase64 }) as unknown as Promise<string>;
   }
 }
 
