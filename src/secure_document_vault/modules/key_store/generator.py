@@ -3,7 +3,7 @@ import json
 import uuid
 import hashlib
 import base64
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from cryptography.hazmat.primitives import hashes, serialization
@@ -25,7 +25,14 @@ class KeyProtector:
     KEYSTORE_VERSION = 1
     KDF_ITERATIONS = 600_000
     ENCRYPTION_ALGORITHM = "ChaCha20-Poly1305"
+    DEFAULT_EXPIRATION_DAYS = 730  # 2 years
     KDF_ALGORITHM = "PBKDF2-HMAC-SHA256"
+
+    # Valid key lifecycle statuses
+    STATUS_ACTIVE = "ACTIVE"
+    STATUS_ROTATED = "ROTATED"
+    STATUS_REVOKED = "REVOKED"
+    STATUS_EXPIRED = "EXPIRED"
 
     # Fields required for a valid keystore
     REQUIRED_FIELDS = {
@@ -51,11 +58,23 @@ class KeyProtector:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @staticmethod
-    def protect_key(password: str, private_key_obj, user_id: str = "unknown") -> dict:
+    def protect_key(
+        password: str,
+        private_key_obj,
+        user_id: str = "unknown",
+        expires_in_days: int | None = None,
+    ) -> dict:
         """Encrypt a private key with a password and return a keystore dictionary.
 
-        The keystore includes full metadata and a SHA-256 integrity checksum
-        so that corruption or tampering can be detected during restore.
+        The keystore includes full metadata, lifecycle status, and a SHA-256
+        integrity checksum so that corruption or tampering can be detected
+        during restore.
+
+        Args:
+            password: User password for key encryption.
+            private_key_obj: Cryptographic private key object.
+            user_id: Identifier for the key owner.
+            expires_in_days: Optional expiration period. If None, no expiration.
         """
         # Convert key to raw PEM bytes
         private_key_bytes = private_key_obj.private_bytes(
@@ -91,14 +110,23 @@ class KeyProtector:
             encrypted_key_b64, nonce_b64, salt_b64
         )
 
+        now = datetime.now(timezone.utc)
+        metadata = {
+            "key_id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "key_version": KeyProtector.KEYSTORE_VERSION,
+            "creation_date": now.isoformat(),
+            "encryption_algorithm": KeyProtector.ENCRYPTION_ALGORITHM,
+            "status": KeyProtector.STATUS_ACTIVE,
+        }
+
+        if expires_in_days is not None:
+            metadata["expires_at"] = (
+                now + timedelta(days=expires_in_days)
+            ).isoformat()
+
         return {
-            "metadata": {
-                "key_id": str(uuid.uuid4()),
-                "user_id": user_id,
-                "key_version": KeyProtector.KEYSTORE_VERSION,
-                "creation_date": datetime.now(timezone.utc).isoformat(),
-                "encryption_algorithm": KeyProtector.ENCRYPTION_ALGORITHM,
-            },
+            "metadata": metadata,
             "kdf_parameters": {
                 "kdf_algorithm": KeyProtector.KDF_ALGORITHM,
                 "iterations": KeyProtector.KDF_ITERATIONS,
@@ -113,8 +141,28 @@ class KeyProtector:
     def verify_password(password: str, keystore_dict: dict):
         """Decrypt a private key from a keystore dictionary using the given password.
 
-        Raises ValueError if the password is wrong or the keystore is corrupted.
+        Raises ValueError if:
+        - The password is empty or None.
+        - The password is wrong (AEAD tag mismatch).
+        - The keystore is corrupted.
+        - The keystore has been revoked.
         """
+        # Guard: reject empty or None passwords before expensive KDF
+        if not password or not isinstance(password, str):
+            raise ValueError(
+                "CONTRASEÑA INCORRECTA O KEYSTORE CORRUPTO"
+            )
+
+        # Guard: reject revoked keystores
+        status = keystore_dict.get("metadata", {}).get(
+            "status", KeyProtector.STATUS_ACTIVE
+        )
+        if status == KeyProtector.STATUS_REVOKED:
+            raise ValueError(
+                "KEYSTORE REVOCADO: esta identidad ha sido comprometida "
+                "y marcada como revocada. Genere una nueva identidad."
+            )
+
         salt = base64.b64decode(keystore_dict["kdf_parameters"]["salt"])
         nonce = base64.b64decode(keystore_dict["nonce"])
         encrypted_key = base64.b64decode(keystore_dict["encrypted_key"])
@@ -271,3 +319,100 @@ class KeyProtector:
             raise FileNotFoundError(f"El archivo de keystore no existe: {filepath}")
         with open(filepath, "r", encoding="utf-8") as f:
             return json.load(f)
+
+    # ------------------------------------------------------------------
+    # Key Lifecycle Management
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_key_status(keystore_dict: dict) -> str:
+        """Return the lifecycle status of a keystore.
+
+        Backward-compatible: keystores without a 'status' field
+        are treated as ACTIVE.
+        """
+        return keystore_dict.get("metadata", {}).get(
+            "status", KeyProtector.STATUS_ACTIVE
+        )
+
+    @staticmethod
+    def revoke_key(keystore_dict: dict) -> dict:
+        """Mark a keystore as REVOKED (compromise response).
+
+        Once revoked, verify_password() will refuse to unlock the key.
+        Returns a new dict — does NOT mutate the original.
+        """
+        revoked = json.loads(json.dumps(keystore_dict))  # deep copy
+        revoked["metadata"]["status"] = KeyProtector.STATUS_REVOKED
+        revoked["metadata"]["revoked_at"] = (
+            datetime.now(timezone.utc).isoformat()
+        )
+        return revoked
+
+    @staticmethod
+    def rotate_key(
+        old_keystore: dict,
+        password: str,
+        new_private_key_obj,
+        new_password: str | None = None,
+    ) -> tuple[dict, dict]:
+        """Rotate a key: retire the old keystore and protect the new key.
+
+        Steps:
+          1. Verify the old password unlocks the old keystore.
+          2. Mark the old keystore as ROTATED.
+          3. Protect the new private key (with new_password or same password).
+          4. Link the new keystore to the old one via 'rotated_from'.
+
+        Returns (new_keystore, retired_old_keystore).
+        Raises ValueError if the old password is wrong.
+        """
+        # Verify old password is correct
+        KeyProtector.verify_password(password, old_keystore)
+
+        # Retire old keystore
+        retired = json.loads(json.dumps(old_keystore))  # deep copy
+        retired["metadata"]["status"] = KeyProtector.STATUS_ROTATED
+        retired["metadata"]["rotated_at"] = (
+            datetime.now(timezone.utc).isoformat()
+        )
+
+        # Protect new key
+        user_id = old_keystore["metadata"].get("user_id", "unknown")
+        effective_password = new_password if new_password else password
+        new_keystore = KeyProtector.protect_key(
+            effective_password, new_private_key_obj, user_id
+        )
+
+        # Link provenance
+        new_keystore["metadata"]["rotated_from"] = (
+            old_keystore["metadata"]["key_id"]
+        )
+
+        return new_keystore, retired
+
+    @staticmethod
+    def check_expiration(keystore_dict: dict) -> tuple[bool, str]:
+        """Check if a keystore has expired.
+
+        Returns (is_expired, message).
+        Keystores without 'expires_at' never expire.
+        """
+        expires_at_str = keystore_dict.get("metadata", {}).get("expires_at")
+        if not expires_at_str:
+            return False, "No expiration date set."
+
+        try:
+            expires_at = datetime.fromisoformat(expires_at_str)
+        except (ValueError, TypeError):
+            return False, "Invalid expiration date format."
+
+        now = datetime.now(timezone.utc)
+        if now >= expires_at:
+            return True, (
+                f"Key expired on {expires_at.strftime('%Y-%m-%d')}. "
+                f"Rotation is recommended."
+            )
+
+        remaining = (expires_at - now).days
+        return False, f"Key is valid. Expires in {remaining} days."
