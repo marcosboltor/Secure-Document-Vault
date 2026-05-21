@@ -25,6 +25,7 @@ class FilesDatasourceImpl(FilesDatasource):
         self.session = session
 
     def _map_to_domain(self, file: FileModel) -> VaultFile:
+        size = len(file.encrypted_content) if file.encrypted_content else 0
         return VaultFile(
             id=file.id,
             name=file.name,
@@ -33,6 +34,7 @@ class FilesDatasourceImpl(FilesDatasource):
             recipients=file.recipients or [],
             created_at=file.created_at,
             signer_public_key_base64=file.signer_public_key_base64,
+            size=size,
             encrypted_content=file.encrypted_content,
         )
 

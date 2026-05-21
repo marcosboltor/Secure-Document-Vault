@@ -200,13 +200,6 @@ export default function FilesPage() {
           <h1 className={styles.title}>Secure Archive</h1>
           <p className={styles.subtitle}>Institutional repository of encrypted payloads and authorized transmissions.</p>
         </div>
-        <div className={styles.actions}>
-          <div className={styles.searchBox}>
-            <Search size={16} />
-            <input type="text" placeholder="Search archives..." />
-          </div>
-          <button className={styles.filterBtn}><Settings2 size={16} /></button>
-        </div>
       </div>
 
       <div className={styles.tableCard}>
