@@ -19,6 +19,7 @@ import { userRepository } from "@/infrastructure/repositories/api-user.repositor
 import { fileRepository } from "@/infrastructure/repositories/api-file.repository";
 import { User } from "@/core/domain/user.repository";
 import { useRouter } from "next/navigation";
+import PasswordModal from "@/app/components/PasswordModal/PasswordModal";
 
 interface Toast {
   id: string;
@@ -37,6 +38,11 @@ export default function UploadPage() {
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
 
+  // Password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordModalLoading, setPasswordModalLoading] = useState(false);
+  const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
+
   const addToast = (message: string) => {
     const id = Math.random().toString(36).substring(7);
     setToasts((prev) => [...prev, { id, message }]);
@@ -51,7 +57,6 @@ export default function UploadPage() {
     userRepository.getAllUsers().then(users => {
       setAvailableUsers(users);
       setIsLoadingUsers(false);
-      // No longer defaulting to first user, empty is fine (author only)
       setSelectedRecipients([]);
     });
   }, []);
@@ -63,17 +68,25 @@ export default function UploadPage() {
   };
 
   const toggleRecipient = (id: string) => {
-    setSelectedRecipients(prev => 
-      prev.includes(id) 
+    setSelectedRecipients(prev =>
+      prev.includes(id)
         ? prev.filter(uid => uid !== id)
         : [...prev, id]
     );
   };
 
-  const handleEncrypt = async () => {
+  // Step 1: User clicks encrypt → show password modal
+  const handleEncrypt = () => {
     if (files.length === 0) return;
-    setIsProcessing(true);
-    
+    setPasswordModalError(null);
+    setShowPasswordModal(true);
+  };
+
+  // Step 2: User submits password → perform encryption
+  const handlePasswordSubmit = async (password: string) => {
+    setPasswordModalLoading(true);
+    setPasswordModalError(null);
+
     try {
       const currentUserStr = localStorage.getItem("vault_user");
       if (!currentUserStr) throw new Error("No active session found.");
@@ -95,24 +108,27 @@ export default function UploadPage() {
         });
       }
 
-      // Sync the recipients list for metadata storage
       const finalRecipientIds = [...new Set([...selectedRecipients, currentUser.id])];
 
-      // Use signer keys from session storage
-      const privateKeys = JSON.parse(sessionStorage.getItem("vault_private_keys") || "{}");
-      const signerPrivate = privateKeys.signing?.private;
-
-      if (!signerPrivate) throw new Error("Signing key not found in session. Please log in again.");
+      // Get encrypted signing keystore from session
+      const keystoresStr = sessionStorage.getItem("vault_keystores");
+      if (!keystoresStr) throw new Error("Session expired. Please log in again.");
+      const keystores = JSON.parse(keystoresStr);
+      const signKeystoreJson = JSON.stringify(keystores.signing);
 
       const encrypted = await vaultRepository.encrypt({
         file: uint8Array,
         fileName: file.name,
         recipients: recipientsData,
         signerId: currentUser.id,
-        signerPrivateKeyPem: signerPrivate
+        signerKeystoreJson: signKeystoreJson,
+        password: password,
       });
 
-      // Save to local vault storage
+      // Close modal on success
+      setShowPasswordModal(false);
+
+      // Save to vault storage
       await fileRepository.saveFile({
         id: crypto.randomUUID(),
         name: file.name,
@@ -122,20 +138,42 @@ export default function UploadPage() {
         createdAt: new Date().toISOString(),
         size: encrypted.length,
         encryptedContent: encrypted,
-        signerPublicKeyBase64: privateKeys.signing?.publicPem,
+        signerPublicKeyBase64: keystores.signing?.publicPem || currentUser.publicKeys.signing,
       });
 
       router.push("/files");
     } catch (error: any) {
       console.error("Encryption failed:", error);
-      addToast(error.message || "Encryption failed.");
+      const msg = error.message || "";
+
+      if (msg.includes("CONTRASEÑA INCORRECTA") || msg.includes("KEYSTORE CORRUPTO")) {
+        setPasswordModalError("Incorrect password. Please try again.");
+      } else {
+        setPasswordModalError(msg || "Encryption failed.");
+      }
     } finally {
-      setIsProcessing(false);
+      setPasswordModalLoading(false);
     }
+  };
+
+  const handlePasswordCancel = () => {
+    setShowPasswordModal(false);
+    setPasswordModalError(null);
   };
 
   return (
     <div className={styles.container}>
+      {/* Password Modal for encryption */}
+      <PasswordModal
+        isOpen={showPasswordModal}
+        title="Sign & Encrypt"
+        description="Enter your vault password to unlock your signing key and encrypt the payload."
+        onSubmit={handlePasswordSubmit}
+        onCancel={handlePasswordCancel}
+        isLoading={passwordModalLoading}
+        error={passwordModalError}
+      />
+
       {/* Toast notifications */}
       <div className={styles.toastContainer}>
         {toasts.map((toast) => (
@@ -161,18 +199,18 @@ export default function UploadPage() {
 
       <div className={styles.grid}>
         <div className={styles.dropzoneCard}>
-          <div 
+          <div
             className={`${styles.dropzone} ${isDragging ? styles.dragging : ""}`}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files); }}
             onClick={() => document.getElementById("fileInput")?.click()}
           >
-            <input 
-              type="file" 
-              id="fileInput" 
-              hidden 
-              onChange={(e) => handleFile(e.target.files)} 
+            <input
+              type="file"
+              id="fileInput"
+              hidden
+              onChange={(e) => handleFile(e.target.files)}
             />
             <div className={styles.dropzoneIcon}>
               <UploadIcon size={32} />
@@ -197,13 +235,13 @@ export default function UploadPage() {
                     <div className={styles.loadingUsers}>Loading personnel...</div>
                   ) : (
                     availableUsers.map(user => (
-                      <div 
-                        key={user.id} 
+                      <div
+                        key={user.id}
                         className={`${styles.userRow} ${selectedRecipients.includes(user.id) ? styles.selectedUser : ""}`}
                         onClick={() => toggleRecipient(user.id)}
                       >
-                        {selectedRecipients.includes(user.id) 
-                          ? <CheckCircle2 size={16} className={styles.checkIcon} /> 
+                        {selectedRecipients.includes(user.id)
+                          ? <CheckCircle2 size={16} className={styles.checkIcon} />
                           : <Circle size={16} className={styles.uncheckIcon} />
                         }
                         <div className={styles.userInfo}>
@@ -235,7 +273,7 @@ export default function UploadPage() {
             <FileCheck size={18} /> STAGING QUEUE
             <span className={styles.itemCount}>{files.length} Items</span>
           </div>
-          
+
           <div className={styles.queueList}>
             {files.length === 0 ? (
               <div className={styles.emptyQueue}>
@@ -259,8 +297,8 @@ export default function UploadPage() {
               <span>TOTAL PAYLOAD</span>
               <strong>{(files.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(2)} MB</strong>
             </div>
-            <button 
-              className={styles.commenceBtn} 
+            <button
+              className={styles.commenceBtn}
               disabled={files.length === 0 || isProcessing || !isEngineReady}
               onClick={handleEncrypt}
             >
@@ -270,7 +308,7 @@ export default function UploadPage() {
                 <><Loader2 className={styles.spinner} size={18} /> INITIALIZING ENGINE...</>
               ) : (
                 <>
-                  <ShieldCheck size={18} /> 
+                  <ShieldCheck size={18} />
                   {selectedRecipients.length === 0 ? "PRIVATE TRANSFER" : "COMMENCE TRANSFER"}
                 </>
               )}
