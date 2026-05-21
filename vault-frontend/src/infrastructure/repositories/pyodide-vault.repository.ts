@@ -6,7 +6,7 @@ import {
 
 export class PyodideVaultRepository implements IVaultRepository {
   private worker: Worker | null = null;
-  private pendingRequests: Map<string, { resolve: (val: Uint8Array) => void; reject: (err: Error) => void }> = new Map();
+  private pendingRequests: Map<string, { resolve: (val: any) => void; reject: (err: Error) => void }> = new Map();
   private initializationPromise: Promise<boolean> | null = null;
 
   constructor() {
@@ -51,7 +51,7 @@ export class PyodideVaultRepository implements IVaultRepository {
     return this.initializationPromise;
   }
 
-  private sendRequest(type: string, payload: unknown): Promise<Uint8Array> {
+  private sendRequest(type: string, payload: unknown): Promise<any> {
     const id = Math.random().toString(36).substring(7);
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });
@@ -61,12 +61,25 @@ export class PyodideVaultRepository implements IVaultRepository {
 
   async encrypt(params: EncryptionParams): Promise<Uint8Array> {
     await this.isReady();
-    return this.sendRequest("ENCRYPT", params);
+    return this.sendRequest("ENCRYPT", {
+      file: params.file,
+      fileName: params.fileName,
+      recipients: params.recipients,
+      signerId: params.signerId,
+      signerKeystoreJson: params.signerKeystoreJson,
+      password: params.password,
+    });
   }
 
   async decrypt(params: DecryptionParams): Promise<Uint8Array> {
     await this.isReady();
-    return this.sendRequest("DECRYPT", params);
+    return this.sendRequest("DECRYPT", {
+      vaultFile: params.vaultFile,
+      userId: params.userId,
+      userKeystoreJson: params.userKeystoreJson,
+      password: params.password,
+      signerPublicKeyPem: params.signerPublicKeyPem,
+    });
   }
 
   async generateIdentity(): Promise<any> {
@@ -74,9 +87,14 @@ export class PyodideVaultRepository implements IVaultRepository {
     return this.sendRequest("GENERATE_IDENTITY", {});
   }
 
-  async signChallenge(challenge: string, signerPrivateKeyBase64: string): Promise<string> {
+  async protectKeys(password: string, privXB64: string, privEdB64: string, userId: string): Promise<any> {
     await this.isReady();
-    return this.sendRequest("SIGN_CHALLENGE", { challenge, signerPrivateKeyBase64 }) as unknown as Promise<string>;
+    return this.sendRequest("PROTECT_KEYS", { password, privXB64, privEdB64, userId });
+  }
+
+  async signChallengeWithKeystore(challenge: string, signKeystoreJson: string, password: string): Promise<string> {
+    await this.isReady();
+    return this.sendRequest("SIGN_CHALLENGE_KEYSTORE", { challenge, signKeystoreJson, password }) as Promise<string>;
   }
 }
 
