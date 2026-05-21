@@ -171,6 +171,7 @@ def test_backup_restore_file(tmp_path):
 
     assert original_pub_bytes == recovered_pub_bytes
 
+
 def test_validate_keystore_integrity():
     """Verifies that the structural and checksum validation works correctly."""
     bob = create_user("bob-validate")
@@ -198,7 +199,9 @@ def test_validate_keystore_integrity():
 
     # Checksum mismatch
     corrupted_checksum = dict(valid_keystore)
-    corrupted_checksum["checksum"] = corrupted_checksum["checksum"].replace("a", "b").replace("1", "2")
+    corrupted_checksum["checksum"] = (
+        corrupted_checksum["checksum"].replace("a", "b").replace("1", "2")
+    )
     is_valid, reason = KeyProtector.validate_keystore(corrupted_checksum)
     assert is_valid is False
     assert "Checksum mismatch" in reason
@@ -208,7 +211,9 @@ def test_export_import_keystore_bundle():
     """Verifies that exporting and importing the keystore bundle works as expected."""
     user = create_user("bundle-user")
     enc_keystore = KeyProtector.protect_key("pass", user["private_key"], user["id"])
-    sign_keystore = KeyProtector.protect_key("pass", user["signing_private_key"], user["id"])
+    sign_keystore = KeyProtector.protect_key(
+        "pass", user["signing_private_key"], user["id"]
+    )
 
     bundle = KeyProtector.export_keystore_bundle(
         enc_keystore, sign_keystore, "Bundle User", "bundle@test.com", user["id"]

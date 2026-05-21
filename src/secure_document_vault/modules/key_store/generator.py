@@ -11,7 +11,9 @@ from cryptography.exceptions import InvalidTag
 
 
 class KeyProtector:
-    """Manages password-based encryption of private keys using PBKDF2 + ChaCha20-Poly1305.
+    """Manages password-based encryption of private keys.
+
+    Uses PBKDF2 + ChaCha20-Poly1305.
 
     The keystore format includes:
     - Encrypted private key (ChaCha20-Poly1305 AEAD)
@@ -26,8 +28,20 @@ class KeyProtector:
     KDF_ALGORITHM = "PBKDF2-HMAC-SHA256"
 
     # Fields required for a valid keystore
-    REQUIRED_FIELDS = {"metadata", "kdf_parameters", "nonce", "encrypted_key", "checksum"}
-    REQUIRED_METADATA = {"key_id", "user_id", "key_version", "creation_date", "encryption_algorithm"}
+    REQUIRED_FIELDS = {
+        "metadata",
+        "kdf_parameters",
+        "nonce",
+        "encrypted_key",
+        "checksum",
+    }
+    REQUIRED_METADATA = {
+        "key_id",
+        "user_id",
+        "key_version",
+        "creation_date",
+        "encryption_algorithm",
+    }
     REQUIRED_KDF = {"kdf_algorithm", "iterations", "salt"}
 
     @staticmethod
@@ -73,7 +87,9 @@ class KeyProtector:
         salt_b64 = base64.b64encode(salt).decode("utf-8")
 
         # Compute integrity checksum
-        checksum = KeyProtector._compute_checksum(encrypted_key_b64, nonce_b64, salt_b64)
+        checksum = KeyProtector._compute_checksum(
+            encrypted_key_b64, nonce_b64, salt_b64
+        )
 
         return {
             "metadata": {
@@ -171,7 +187,10 @@ class KeyProtector:
             kdf_params["salt"],
         )
         if expected_checksum != computed_checksum:
-            return False, "Checksum mismatch — keystore may be corrupted or tampered with."
+            return (
+                False,
+                "Checksum mismatch — keystore may be corrupted or tampered with.",
+            )
 
         return True, "Valid."
 
@@ -183,7 +202,9 @@ class KeyProtector:
         user_email: str = "",
         user_id: str = "",
     ) -> dict:
-        """Export a complete keystore bundle containing both encryption and signing keystores.
+        """Export a complete keystore bundle.
+
+        Contains both encryption and signing keystores.
 
         The bundle format is 'vault-keystore-v1' and includes user metadata
         for identification purposes (no private key material).

@@ -13,7 +13,6 @@ from cryptography.hazmat.primitives.asymmetric import x25519, ed25519
 from secure_document_vault.core.facade import encriptar, desencriptar
 from secure_document_vault.modules.key_store.generator import KeyProtector
 
-
 # ---------------------------------------------------------------------------
 # Shared test helpers
 # ---------------------------------------------------------------------------
