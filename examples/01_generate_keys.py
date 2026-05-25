@@ -9,7 +9,6 @@ Run:
     python examples/01_generate_keys.py
 """
 
-import json
 from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric import x25519, ed25519
 from cryptography.hazmat.primitives import serialization
@@ -73,8 +72,10 @@ def main():
     print(f"\nBundle validation: {'OK' if is_valid else 'FAILED'} — {reason}")
 
     print("\nKey IDs:")
-    print(f"  Encryption key: {bundle['keystores']['encryption']['metadata']['key_id']}")
-    print(f"  Signing key:    {bundle['keystores']['signing']['metadata']['key_id']}")
+    enc_id = bundle['keystores']['encryption']['metadata']['key_id']
+    sign_id = bundle['keystores']['signing']['metadata']['key_id']
+    print(f"  Encryption key: {enc_id}")
+    print(f"  Signing key:    {sign_id}")
 
 
 if __name__ == "__main__":

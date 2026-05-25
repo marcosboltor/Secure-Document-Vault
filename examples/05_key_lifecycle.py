@@ -65,7 +65,7 @@ def main():
     corrupted = dict(keystore)
     corrupted["checksum"] = "0" * 64
     is_valid_corrupted, reason_corrupted = KeyProtector.validate_keystore(corrupted)
-    print(f"\nCorrupted keystore:")
+    print("\nCorrupted keystore:")
     print(f"Valid:  {is_valid_corrupted}")
     print(f"Reason: {reason_corrupted}")
 

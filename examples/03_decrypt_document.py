@@ -28,15 +28,21 @@ def setup_demo_users():
     alice = {
         "id": "alice",
         "password": "alice-password",
-        "enc_keystore": KeyProtector.protect_key("alice-password", alice_enc_priv, "alice"),
+        "enc_keystore": KeyProtector.protect_key(
+            "alice-password", alice_enc_priv, "alice"
+        ),
         "enc_public_key": alice_enc_priv.public_key(),
-        "sign_keystore": KeyProtector.protect_key("alice-password", alice_sign_priv, "alice"),
+        "sign_keystore": KeyProtector.protect_key(
+            "alice-password", alice_sign_priv, "alice"
+        ),
         "sign_public_key": alice_sign_priv.public_key(),
     }
     bob = {
         "id": "bob",
         "password": "bob-password",
-        "enc_keystore": KeyProtector.protect_key("bob-password", bob_enc_priv, "bob"),
+        "enc_keystore": KeyProtector.protect_key(
+            "bob-password", bob_enc_priv, "bob"
+        ),
         "enc_public_key": bob_enc_priv.public_key(),
     }
     return alice, bob
@@ -75,7 +81,7 @@ def main():
         signer_public_key=alice["sign_public_key"],
     )
     print(f"Decrypted content: {recovered.decode()}")
-    print(f"Integrity check:   OK (signature verified)\n")
+    print("Integrity check:   OK (signature verified)\n")
 
     # 3. Alice also decrypts
     print("--- Alice decrypts ---")
@@ -87,7 +93,7 @@ def main():
         signer_public_key=alice["sign_public_key"],
     )
     print(f"Decrypted content: {recovered_alice.decode()}")
-    print(f"Integrity check:   OK (signature verified)\n")
+    print("Integrity check:   OK (signature verified)\n")
 
     # 4. Show what happens with an unauthorized user
     print("--- Unauthorized user tries to decrypt ---")

@@ -11,7 +11,6 @@ Run:
 
 from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric import x25519, ed25519
-from cryptography.hazmat.primitives import serialization
 from secure_document_vault.modules.key_store.generator import KeyProtector
 from secure_document_vault.core.facade import encriptar
 
@@ -30,15 +29,21 @@ def setup_demo_users():
         "alice": {
             "id": "alice",
             "password": "alice-password",
-            "enc_keystore": KeyProtector.protect_key("alice-password", alice_enc_priv, "alice"),
+            "enc_keystore": KeyProtector.protect_key(
+                "alice-password", alice_enc_priv, "alice"
+            ),
             "enc_public_key": alice_enc_priv.public_key(),
-            "sign_keystore": KeyProtector.protect_key("alice-password", alice_sign_priv, "alice"),
+            "sign_keystore": KeyProtector.protect_key(
+                "alice-password", alice_sign_priv, "alice"
+            ),
             "sign_public_key": alice_sign_priv.public_key(),
         },
         "bob": {
             "id": "bob",
             "password": "bob-password",
-            "enc_keystore": KeyProtector.protect_key("bob-password", bob_enc_priv, "bob"),
+            "enc_keystore": KeyProtector.protect_key(
+                "bob-password", bob_enc_priv, "bob"
+            ),
             "enc_public_key": bob_enc_priv.public_key(),
         },
     }
@@ -60,7 +65,8 @@ def main():
         {"id": bob["id"], "public_key": bob["enc_public_key"]},
     ]
 
-    print(f"Encrypting '{document_name}' for recipients: {[r['id'] for r in recipients]}")
+    recipient_ids = [r['id'] for r in recipients]
+    print(f"Encrypting '{document_name}' for recipients: {recipient_ids}")
     print(f"Signer: {alice['id']}")
 
     vault_bytes = encriptar(

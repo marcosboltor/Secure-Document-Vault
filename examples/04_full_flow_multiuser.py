@@ -50,7 +50,7 @@ def main():
 
     # Step 2: Alice encrypts a document for the whole team
     print("\n[2] Alice encrypts a document for the team...")
-    document = b"Q3 Financial Results — CONFIDENTIAL\nRevenue: $4.2M\nGrowth: 18%"
+    document = b"Q3 Financial Results - CONFIDENTIAL\nRevenue: $4.2M\nGrowth: 18%"
     filename = "q3_results.txt"
 
     recipients = [{"id": u["id"], "public_key": u["enc_public_key"]} for u in team]
@@ -64,7 +64,7 @@ def main():
         signer_password=alice["password"],
     )
     print(f"    Vault created: {len(vault)} bytes")
-    print(f"    Signed by: alice")
+    print("    Signed by: alice")
     print(f"    Recipients: {[r['id'] for r in recipients]}")
 
     # Step 3: Each team member decrypts independently
