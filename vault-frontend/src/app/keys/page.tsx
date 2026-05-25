@@ -15,15 +15,23 @@ import {
   Lock,
   Info,
   X,
+  ChevronDown,
+  ChevronUp,
+  ShieldAlert,
+  RefreshCw,
+  Ban,
+  Timer,
 } from "lucide-react";
 import PasswordModal from "@/app/components/PasswordModal/PasswordModal";
 import { vaultRepository } from "@/infrastructure/repositories/pyodide-vault.repository";
 
 interface Toast {
   id: string;
-  type: "success" | "error";
+  type: "success" | "error" | "warning";
   message: string;
 }
+
+type KeyStatus = "ACTIVE" | "ROTATED" | "REVOKED" | "EXPIRED" | string;
 
 export default function KeysPage() {
   const [keystores, setKeystores] = useState<any>(null);
@@ -34,6 +42,7 @@ export default function KeysPage() {
   const [passwordModalLoading, setPasswordModalLoading] = useState(false);
   const [passwordModalError, setPasswordModalError] = useState<string | null>(null);
   const [pendingRestore, setPendingRestore] = useState<any>(null);
+  const [showSecurityWarnings, setShowSecurityWarnings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addToast = (type: Toast["type"], message: string) => {
@@ -53,6 +62,26 @@ export default function KeysPage() {
   const getKeyMetadata = (keyName: string) => {
     if (!keystores || !keystores[keyName]) return null;
     return keystores[keyName].metadata || null;
+  };
+
+  const getKeyStatus = (keyName: string): KeyStatus => {
+    const meta = getKeyMetadata(keyName);
+    return meta?.status || "ACTIVE";
+  };
+
+  const getStatusConfig = (status: KeyStatus) => {
+    switch (status) {
+      case "ACTIVE":
+        return { label: "Active", icon: CheckCircle2, className: styles.statusActive };
+      case "ROTATED":
+        return { label: "Rotated", icon: RefreshCw, className: styles.statusRotated };
+      case "REVOKED":
+        return { label: "Revoked", icon: Ban, className: styles.statusRevoked };
+      case "EXPIRED":
+        return { label: "Expired", icon: Timer, className: styles.statusExpired };
+      default:
+        return { label: "Active", icon: CheckCircle2, className: styles.statusActive };
+    }
   };
 
   const encMeta = getKeyMetadata("encryption");
@@ -106,7 +135,7 @@ export default function KeysPage() {
           !json.identity?.encryption?.keystore ||
           !json.identity?.signing?.keystore
         ) {
-          addToast("error", "Invalid backup: missing encrypted keystores.");
+          addToast("error", "Invalid backup: missing encrypted keystores. Please use a valid backup file.");
           return;
         }
 
@@ -114,7 +143,7 @@ export default function KeysPage() {
         setPasswordModalError(null);
         setShowPasswordModal(true);
       } catch {
-        addToast("error", "Failed to parse backup file. Ensure it is a valid .json file.");
+        addToast("error", "Failed to parse backup file. Ensure it is a valid .json file and has not been corrupted.");
       }
     };
     reader.readAsText(file);
@@ -166,9 +195,13 @@ export default function KeysPage() {
     } catch (error: any) {
       const msg = error.message || "";
       if (msg.includes("CONTRASEÑA INCORRECTA") || msg.includes("CORRUPTO")) {
-        setPasswordModalError("Incorrect password. Please try again.");
+        setPasswordModalError("Incorrect password. Please verify and try again.");
+      } else if (msg.includes("REVOCADO")) {
+        setPasswordModalError("This keystore has been revoked due to a security compromise. It cannot be restored.");
+      } else if (msg.includes("keystore no existe") || msg.includes("Missing")) {
+        setPasswordModalError("Missing or corrupted keystore. The backup file may be damaged.");
       } else {
-        setPasswordModalError(msg || "Verification failed.");
+        setPasswordModalError(msg || "Backup restoration failed. The file may be damaged or incompatible.");
       }
     } finally {
       setPasswordModalLoading(false);
@@ -187,6 +220,45 @@ export default function KeysPage() {
   };
 
   const lastBackup = typeof window !== "undefined" ? localStorage.getItem("vault_last_backup") : null;
+
+  const securityWarnings = [
+    {
+      icon: ShieldAlert,
+      title: "Weak Passwords Reduce Security",
+      description:
+        "A weak or commonly-used password significantly reduces the protection of your keystore. " +
+        "Use a strong, unique passphrase with high entropy. The system uses 600,000 PBKDF2 iterations " +
+        "to slow down brute-force attacks, but this cannot compensate for the use of extremely weak passwords.",
+      severity: "warning" as const,
+    },
+    {
+      icon: Lock,
+      title: "Stolen Keystore Cannot Decrypt Data Alone",
+      description:
+        "Even if an attacker obtains your keystore file, they cannot decrypt your private keys " +
+        "without your password. The keystore is encrypted with ChaCha20-Poly1305 using a 256-bit " +
+        "key derived via PBKDF2. Without the correct password, the data is cryptographically indistinguishable from noise.",
+      severity: "info" as const,
+    },
+    {
+      icon: AlertTriangle,
+      title: "Compromised Device May Expose Keys",
+      description:
+        "If your device is infected with malware, has a keylogger, or an attacker has root access, " +
+        "your private keys may be extracted from memory while they are temporarily decrypted during active use. " +
+        "The system assumes your execution environment is not fully compromised.",
+      severity: "danger" as const,
+    },
+    {
+      icon: Download,
+      title: "Backups Must Be Stored Securely",
+      description:
+        "Your backup files contain password-encrypted private keys. Store them on separate, " +
+        "secure media (e.g., encrypted USB drive, offline storage). Never upload backups to " +
+        "untrusted cloud services or share them over insecure channels.",
+      severity: "warning" as const,
+    },
+  ];
 
   return (
     <div className={styles.container}>
@@ -218,7 +290,7 @@ export default function KeysPage() {
         <div className={styles.titleSection}>
           <h1 className={styles.title}>Key Management</h1>
           <p className={styles.subtitle}>
-            View key metadata, download encrypted backups, and restore from backup files.
+            View key lifecycle, download encrypted backups, and restore from backup files.
           </p>
         </div>
       </div>
@@ -244,7 +316,7 @@ export default function KeysPage() {
         )}
       </div>
 
-      {/* Key Metadata */}
+      {/* Key Metadata with Lifecycle */}
       {keystores && (
         <div className={styles.cardsGrid}>
           {/* Encryption Key Card */}
@@ -256,6 +328,20 @@ export default function KeysPage() {
             </div>
             {encMeta && (
               <div className={styles.metadataList}>
+                <div className={styles.metaItem}>
+                  <label>STATUS</label>
+                  {(() => {
+                    const status = getKeyStatus("encryption");
+                    const config = getStatusConfig(status);
+                    const StatusIcon = config.icon;
+                    return (
+                      <div className={`${styles.statusBadgeInline} ${config.className}`}>
+                        <StatusIcon size={14} />
+                        <span>{config.label}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div className={styles.metaItem}>
                   <label>KEY ID</label>
                   <div className={styles.metaValue}>
@@ -277,6 +363,12 @@ export default function KeysPage() {
                   <label>ALGORITHM</label>
                   <span>{encMeta.encryption_algorithm}</span>
                 </div>
+                {encMeta.expires_at && (
+                  <div className={styles.metaItem}>
+                    <label>EXPIRES</label>
+                    <span>{new Date(encMeta.expires_at).toLocaleDateString()}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -290,6 +382,20 @@ export default function KeysPage() {
             </div>
             {signMeta && (
               <div className={styles.metadataList}>
+                <div className={styles.metaItem}>
+                  <label>STATUS</label>
+                  {(() => {
+                    const status = getKeyStatus("signing");
+                    const config = getStatusConfig(status);
+                    const StatusIcon = config.icon;
+                    return (
+                      <div className={`${styles.statusBadgeInline} ${config.className}`}>
+                        <StatusIcon size={14} />
+                        <span>{config.label}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div className={styles.metaItem}>
                   <label>KEY ID</label>
                   <div className={styles.metaValue}>
@@ -311,11 +417,53 @@ export default function KeysPage() {
                   <label>ALGORITHM</label>
                   <span>{signMeta.encryption_algorithm}</span>
                 </div>
+                {signMeta.expires_at && (
+                  <div className={styles.metaItem}>
+                    <label>EXPIRES</label>
+                    <span>{new Date(signMeta.expires_at).toLocaleDateString()}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       )}
+
+      {/* Security Warnings Section */}
+      <div className={styles.warningsSection}>
+        <button
+          className={styles.warningsToggle}
+          onClick={() => setShowSecurityWarnings(!showSecurityWarnings)}
+        >
+          <div className={styles.warningsToggleContent}>
+            <ShieldAlert size={18} />
+            <span>Security Warnings &amp; Information</span>
+          </div>
+          {showSecurityWarnings ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+
+        {showSecurityWarnings && (
+          <div className={styles.warningsList}>
+            {securityWarnings.map((warning, index) => {
+              const WarningIcon = warning.icon;
+              return (
+                <div
+                  key={index}
+                  className={`${styles.warningItem} ${styles[`severity_${warning.severity}`]}`}
+                >
+                  <div className={styles.warningIcon}>
+                    <WarningIcon size={18} />
+                  </div>
+                  <div className={styles.warningContent}>
+                    <strong>{warning.title}</strong>
+                    <p>{warning.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Actions */}
       <div className={styles.actionsSection}>
@@ -383,7 +531,8 @@ export default function KeysPage() {
           <p>
             Backup files contain encrypted private keys. They cannot be used without
             the correct password. The backup does not weaken security — all
-            cryptographic protections remain intact.
+            cryptographic protections remain intact. If you suspect your keystore
+            has been compromised, revoke your identity and generate new keys immediately.
           </p>
         </div>
       </div>

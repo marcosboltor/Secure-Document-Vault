@@ -259,3 +259,184 @@ def test_stolen_files_without_password_are_useless():
     # Attack vector B: None password
     with pytest.raises((ValueError, AttributeError)):
         KeyProtector.verify_password(None, alice_x_keystore)  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# SCENARIO 6: Empty password → immediate rejection (no KDF wasted)
+# ---------------------------------------------------------------------------
+
+
+def test_empty_password_rejected():
+    """
+    An empty string password must be rejected immediately with a ValueError,
+    before any expensive PBKDF2 derivation occurs.
+
+    Assertion: ValueError raised for empty string and None passwords.
+    """
+    alice = _make_user("alice")
+    alice_x_keystore = KeyProtector.protect_key(
+        "real_password", alice["private_key"], alice["id"]
+    )
+
+    with pytest.raises(ValueError):
+        KeyProtector.verify_password("", alice_x_keystore)
+
+    with pytest.raises(ValueError):
+        KeyProtector.verify_password(None, alice_x_keystore)  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# SCENARIO 7: Key rotation → new key works, old key is retired
+# ---------------------------------------------------------------------------
+
+
+def test_key_rotation_preserves_access():
+    """
+    After rotating a key, the new keystore can decrypt data that was
+    re-encrypted for the new key, and the old keystore is marked ROTATED.
+
+    Assertion: new keystore works; old keystore has status ROTATED.
+    """
+    from cryptography.hazmat.primitives.asymmetric import x25519
+
+    alice = _make_user("alice")
+    password = "rotation_test_password"
+
+    old_keystore = KeyProtector.protect_key(
+        password, alice["private_key"], alice["id"]
+    )
+
+    # Generate a new key and rotate
+    new_x_priv = x25519.X25519PrivateKey.generate()
+    new_keystore, retired_old = KeyProtector.rotate_key(
+        old_keystore, password, new_x_priv
+    )
+
+    # Old keystore is marked as ROTATED
+    assert retired_old["metadata"]["status"] == "ROTATED"
+    assert "rotated_at" in retired_old["metadata"]
+
+    # New keystore is ACTIVE and links back
+    rotation = new_keystore["metadata"]["rotated_from"]
+    assert new_keystore["metadata"]["status"] == "ACTIVE"
+    assert rotation == old_keystore["metadata"]["key_id"]
+
+    # New keystore can be unlocked
+    recovered = KeyProtector.verify_password(password, new_keystore)
+    assert recovered is not None
+
+
+# ---------------------------------------------------------------------------
+# SCENARIO 8: Revoked keystore → cannot decrypt
+# ---------------------------------------------------------------------------
+
+
+def test_revoked_keystore_rejected():
+    """
+    A keystore marked as REVOKED must be rejected immediately by
+    verify_password(), preventing any use of the compromised key.
+
+    Assertion: ValueError raised mentioning 'REVOCADO'.
+    """
+    alice = _make_user("alice")
+    password = "compromise_response_test"
+
+    keystore = KeyProtector.protect_key(
+        password, alice["private_key"], alice["id"]
+    )
+
+    # Revoke the key (simulate compromise response)
+    revoked = KeyProtector.revoke_key(keystore)
+    assert revoked["metadata"]["status"] == "REVOKED"
+    assert "revoked_at" in revoked["metadata"]
+
+    # Attempting to unlock a revoked keystore must fail
+    with pytest.raises(ValueError, match="REVOCADO"):
+        KeyProtector.verify_password(password, revoked)
+
+    # Original keystore should still work (it wasn't mutated)
+    recovered = KeyProtector.verify_password(password, keystore)
+    assert recovered is not None
+
+
+# ---------------------------------------------------------------------------
+# SCENARIO 9: Keystore validation detects tampering
+# ---------------------------------------------------------------------------
+
+
+def test_keystore_validation_detects_tampering():
+    """
+    The validate_keystore() method must detect multiple forms of tampering:
+    corrupted checksum, missing fields, and low iteration counts.
+
+    Assertion: each tampering scenario returns (False, reason).
+    """
+    alice = _make_user("alice")
+    valid_ks = KeyProtector.protect_key(
+        "validation_test", alice["private_key"], alice["id"]
+    )
+
+    # Valid keystore passes
+    is_valid, _ = KeyProtector.validate_keystore(valid_ks)
+    assert is_valid is True
+
+    # Corrupted checksum
+    corrupted = dict(valid_ks)
+    corrupted["checksum"] = "0" * 64
+    is_valid, reason = KeyProtector.validate_keystore(corrupted)
+    assert is_valid is False
+    assert "Checksum mismatch" in reason
+
+    # Missing nonce
+    no_nonce = dict(valid_ks)
+    del no_nonce["nonce"]
+    is_valid, reason = KeyProtector.validate_keystore(no_nonce)
+    assert is_valid is False
+    assert "Missing required fields" in reason
+
+    # Dangerously low iterations
+    low_iter = dict(valid_ks)
+    low_iter["kdf_parameters"] = dict(low_iter["kdf_parameters"])
+    low_iter["kdf_parameters"]["iterations"] = 100
+    is_valid, reason = KeyProtector.validate_keystore(low_iter)
+    assert is_valid is False
+    assert "Iterations too low" in reason
+
+
+# ---------------------------------------------------------------------------
+# SCENARIO 10: Key identity is consistent
+# ---------------------------------------------------------------------------
+
+
+def test_key_identity_consistency():
+    """
+    The same private key protected twice produces keystores with
+    different key_ids (each is unique), but both unlock the same
+    underlying key material.
+
+    Assertion: key_ids differ; recovered public keys match.
+    """
+    from cryptography.hazmat.primitives import serialization
+
+    alice = _make_user("alice")
+    password = "consistency_test"
+
+    ks1 = KeyProtector.protect_key(password, alice["private_key"], alice["id"])
+    ks2 = KeyProtector.protect_key(password, alice["private_key"], alice["id"])
+
+    # Each keystore has a unique key_id
+    assert ks1["metadata"]["key_id"] != ks2["metadata"]["key_id"]
+
+    # But both recover the same key
+    key1 = KeyProtector.verify_password(password, ks1)
+    key2 = KeyProtector.verify_password(password, ks2)
+
+    pub1 = key1.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    pub2 = key2.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    assert pub1 == pub2
