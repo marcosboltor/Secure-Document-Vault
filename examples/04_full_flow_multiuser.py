@@ -42,10 +42,10 @@ def main():
     # Step 1: Each user generates their key pair
     print("\n[1] Generating key pairs...")
     alice = create_user("alice", "alice-pass-2024!")
-    bob   = create_user("bob",   "bob-pass-2024!")
+    bob = create_user("bob", "bob-pass-2024!")
     carol = create_user("carol", "carol-pass-2024!")
-    dave  = create_user("dave",  "dave-pass-2024!")
-    team  = [alice, bob, carol, dave]
+    dave = create_user("dave", "dave-pass-2024!")
+    team = [alice, bob, carol, dave]
     print(f"    Users created: {[u['id'] for u in team]}")
 
     # Step 2: Alice encrypts a document for the whole team
@@ -78,7 +78,8 @@ def main():
             signer_public_key=alice["sign_public_key"],
         )
         match = recovered == document
-        print(f"    {user['id']:8s} -> decrypted OK | integrity: {'PASS' if match else 'FAIL'}")
+        status = "PASS" if match else "FAIL"
+        print(f"    {user['id']:8s} -> decrypted OK | integrity: {status}")
 
     # Step 4: Eve (outsider) is rejected
     print("\n[4] Eve (outsider) tries to access the vault...")
