@@ -208,3 +208,7 @@ __marimo__/
 
 # Zip
 secure_document_vault.zip
+
+# Keystore files (never commit real keys)
+keys/*.json
+!keys/README.md
