@@ -34,9 +34,9 @@ Características principales
 * Cifrado híbrido (key wrapping con RSA/ECC) para proteger las claves simétricas de cada archivo mediante las llaves públicas de los destinatarios.
 * Firma digital obligatoria de los documentos para garantizar la autenticidad.
 * Verificación de la firma antes de descifrar el contenido.
-* Gestión de claves con KDF (Argon2 / PBKDF2).
-* Respaldo de las llaves.
-* Mecanismo de recuperación de las llaves.
+* Gestión de claves robusta con PBKDF2 (600,000 iteraciones) y protección mediante KEK.
+* Respaldo y exportación/importación segura de Keystores locales (`.keystore`) mediante operaciones I/O confiables.
+* Mecanismo de recuperación fuera de línea (offline) empleando frases semilla mnemónicas.
 * Capacidad para compartir con múltiples usuarios.
 * Formato: CLI o aplicación local.
 
@@ -106,7 +106,7 @@ El sistema no garantiza resistencia frente a:
 El diseño adopta un nivel de seguridad clásico de ≥128 bits. La migración a esquemas post-cuánticos requeriría primitivas adicionales no consideradas en este diseño base.
 
 ## 2. Diagrama de arquitectura
-![Diagrama de Arquitectura - Cripto drawio (2)](https://github.com/user-attachments/assets/04e69cc7-1d32-47c6-93be-82037ca8ee54)
+<img width="1356" height="701" alt="Diagrama de Arquitectura - Cripto" src="https://github.com/user-attachments/assets/985cc767-ba31-4bba-a7b0-164d8be08fed" />
 
 
 ## 3. Requerimientos de seguridad

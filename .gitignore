@@ -206,4 +206,9 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-.github/CODEOWNERS
+# Zip
+secure_document_vault.zip
+
+# Keystore files (never commit real keys)
+keys/*.json
+!keys/README.md

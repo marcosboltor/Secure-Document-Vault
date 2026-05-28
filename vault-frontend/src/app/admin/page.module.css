@@ -1,0 +1,243 @@
+.container {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.headerSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 3rem;
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-headline);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-label);
+  font-size: 0.95rem;
+  max-width: 600px;
+}
+
+.primaryBtn {
+  background: var(--accent-gradient);
+  color: #000000;
+  border: none;
+  padding: 0.8rem 1.6rem;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.3s;
+}
+
+.primaryBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
+}
+
+.statsGrid {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 3.5rem;
+}
+
+.statCard {
+  flex: 1;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.75rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.statLabel {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.75rem;
+}
+
+.statValue {
+  font-size: 2.75rem;
+  font-weight: 900;
+  color: var(--color-tertiary);
+}
+
+.statIcon {
+  color: var(--color-tertiary);
+  opacity: 0.3;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-headline);
+  letter-spacing: 0.05em;
+}
+
+.filter {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.userRow {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.3s;
+  border-left: 4px solid transparent;
+}
+
+.userRow:hover {
+  border-left-color: var(--color-tertiary);
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.03) 0%, transparent 100%);
+  transform: translateX(5px);
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  width: 320px;
+}
+
+.userAvatar {
+  width: 44px;
+  height: 44px;
+  background-color: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-tertiary);
+}
+
+.userName {
+  color: var(--text-headline);
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.userEmail {
+  color: var(--text-label);
+  font-size: 0.85rem;
+}
+
+.userRole {
+  width: 150px;
+  display: flex;
+  justify-content: center;
+}
+
+.adminBadge {
+  background-color: rgba(212, 175, 55, 0.1);
+  color: var(--color-tertiary);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  letter-spacing: 0.05em;
+}
+
+.userBadge {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--text-label);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  border: 1px solid var(--border-subtle);
+  letter-spacing: 0.05em;
+}
+
+.userFiles {
+  text-align: right;
+  width: 180px;
+}
+
+.fileCount {
+  color: var(--text-headline);
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.ownership {
+  color: var(--text-label);
+  font-size: 0.75rem;
+}
+.loadingBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 4rem;
+  color: var(--text-label);
+  font-size: 0.9rem;
+}
+
+.spinner {
+  animation: rotate 1s linear infinite;
+  color: var(--color-tertiary);
+}
+
+.emptyRoster {
+  padding: 4rem;
+  text-align: center;
+  color: var(--text-label);
+  font-style: italic;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

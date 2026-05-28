@@ -1,0 +1,453 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  position: relative;
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-headline);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-label);
+  font-size: 0.95rem;
+  max-width: 650px;
+}
+
+.headerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--color-tertiary);
+  background-color: rgba(212, 175, 55, 0.1);
+  padding: 0.4rem 0.8rem;
+  border-radius: 50px;
+  margin-top: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.dropzoneCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.dropzone {
+  height: 380px;
+  border: 2px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(212, 175, 55, 0.02);
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.dropzone:hover, .dragging {
+  border-color: var(--color-tertiary);
+  background-color: rgba(212, 175, 55, 0.05);
+}
+
+.dropzoneIcon {
+  width: 72px;
+  height: 72px;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
+}
+
+.dropzone h3 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-headline);
+  margin-bottom: 0.5rem;
+}
+
+.dropzone p {
+  color: var(--text-label);
+  margin-bottom: 2rem;
+}
+
+.limitInfo {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.limitInfo span {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--color-tertiary);
+  text-transform: uppercase;
+  background-color: rgba(212, 175, 55, 0.1);
+  padding: 0.35rem 1rem;
+  border-radius: 4px;
+  letter-spacing: 0.1em;
+}
+
+.paramsCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.75rem;
+}
+
+.paramsHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--text-headline);
+  letter-spacing: 0.15em;
+  margin-bottom: 1.75rem;
+}
+
+.paramsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+}
+
+.paramItem label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+}
+
+.userList {
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.userRow {
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.userRow:last-child {
+  border-bottom: none;
+}
+
+.userRow:hover {
+  background-color: rgba(212, 175, 55, 0.05);
+}
+
+.selectedUser {
+  background-color: rgba(212, 175, 55, 0.1);
+}
+
+.checkIcon {
+  color: var(--color-tertiary);
+}
+
+.uncheckIcon {
+  color: var(--text-label);
+  opacity: 0.5;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.userName {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-headline);
+}
+
+.userEmail {
+  font-size: 0.7rem;
+  color: var(--text-label);
+}
+
+.loadingUsers {
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-label);
+  font-style: italic;
+}
+
+.select {
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-headline);
+  font-size: 0.9rem;
+  cursor: pointer;
+  appearance: none;
+}
+
+.toggleGroup {
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.toggleGroup button {
+  flex: 1;
+  padding: 0.8rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-label);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+}
+
+.activeToggle {
+  background: var(--accent-gradient) !important;
+  color: #000000 !important;
+}
+
+.hint {
+  margin-top: 1rem;
+  font-size: 0.7rem;
+  color: var(--text-label);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.queueCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 600px;
+}
+
+.queueHeader {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--text-headline);
+  letter-spacing: 0.15em;
+}
+
+.itemCount {
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #000000;
+  background: var(--accent-gradient);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+
+.queueList {
+  flex: 1;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.emptyQueue {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-label);
+  font-size: 0.85rem;
+  font-style: italic;
+  text-align: center;
+  padding: 2rem;
+}
+
+.fileItem {
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.fileIcon {
+  color: var(--color-tertiary);
+}
+
+.fileName {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-headline);
+}
+
+.fileSize {
+  font-size: 0.7rem;
+  color: var(--text-label);
+}
+
+.queueFooter {
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.totalInfo {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-label);
+  margin-bottom: 1.5rem;
+}
+
+.totalInfo strong {
+  color: var(--color-tertiary);
+}
+
+.commenceBtn {
+  width: 100%;
+  background: var(--accent-gradient);
+  color: #000000;
+  border: none;
+  padding: 1.1rem;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.commenceBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+}
+
+.commenceBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+}
+
+.errorText {
+  color: #ff4d4d;
+  font-size: 0.7rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.spinner {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.toastContainer {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 1000;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.25rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  min-width: 320px;
+  max-width: 480px;
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #FCA5A5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: slideIn 0.3s ease-out;
+}
+
+.toast span {
+  flex: 1;
+}
+
+.toast button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.toast button:hover {
+  opacity: 1;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}

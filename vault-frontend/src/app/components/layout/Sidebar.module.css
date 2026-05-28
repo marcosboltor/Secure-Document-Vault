@@ -1,0 +1,99 @@
+.sidebar {
+  width: 280px;
+  height: 100vh;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 2.5rem 0;
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+.logoSection {
+  padding: 0 1.5rem;
+  margin-bottom: 4rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logoWrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.logoImg {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  object-fit: contain; /* CRITICAL: Prevent squashing */
+}
+
+.logoText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.logoText h2 {
+  font-size: 1.4rem;
+  letter-spacing: 0.25em;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+
+.logoText p {
+  font-size: 0.55rem;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  color: var(--text-label);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.3s;
+  border-left: 3px solid transparent;
+}
+
+.link:hover {
+  background-color: rgba(212, 175, 55, 0.05);
+  color: var(--text-headline);
+}
+
+.active {
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.1) 0%, transparent 100%);
+  color: var(--color-tertiary);
+  border-left-color: var(--color-tertiary);
+}
+
+.bottomNav {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 1.5rem;
+}
